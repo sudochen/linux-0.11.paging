@@ -11,10 +11,6 @@ include ../Makefile.head
 CFLAGS	+= -I../include
 CPP	+= -I../include
 
-%.s: %.c
-	$(Q)$(CC) $(CFLAGS) -S -o $*.s $<
-%.o: %.s
-	$(Q)$(AS) $(AFLAGS) -o $*.o $<
 %.o: %.c
 	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
 
