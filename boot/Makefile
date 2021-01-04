@@ -31,4 +31,4 @@ head.o: head.s
 	$(Q)$(AS) $(AFLAGS) -o head.o head.s
 
 clean:
-	$(Q)rm -f bootsect bootsect.o setup setup.o head.o
+	$(Q)rm -f bootsect bootsect.o setup setup.o head.o *.sym *.map
