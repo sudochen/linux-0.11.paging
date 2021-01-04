@@ -33,48 +33,52 @@
 	begbss:
 	.text
 
-	.equ SETUPLEN, 4		# nr of setup-sectors
-	.equ BOOTSEG, 0x07c0		# original address of boot-sector
-	.equ INITSEG, 0x9000		# we move boot here - out of the way
-	.equ SETUPSEG, 0x9020		# setup starts here
-	.equ SYSSEG, 0x1000		# system loaded at 0x10000 (65536).
+	.equ SETUPLEN, 4				# nr of setup-sectors
+	.equ BOOTSEG, 0x07c0			# original address of boot-sector
+	.equ INITSEG, 0x9000			# we move boot here - out of the way
+	.equ SETUPSEG, 0x9020			# setup starts here
+	.equ SYSSEG, 0x1000				# system loaded at 0x10000 (65536).
 	.equ ENDSEG, SYSSEG + SYSSIZE	# where to stop loading
 
 # ROOT_DEV:	0x000 - same type of floppy as boot.
 #		0x301 - first partition on first drive etc
 	.equ ROOT_DEV, 0x301
-	ljmp    $BOOTSEG, $_start
+#
+# the code will be copy to 0x7c00 and running
+#
+# I delete blow code
+# ljmp    $BOOTSEG, $_start
+# 
+#
 _start:
-	mov	$BOOTSEG, %ax
-	mov	%ax, %ds
-	mov	$INITSEG, %ax
-	mov	%ax, %es
-	mov	$256, %cx
-	sub	%si, %si
-	sub	%di, %di
-	rep	
-	movsw
-	ljmp	$INITSEG, $go
-go:	mov	%cs, %ax
-	mov	%ax, %ds
-	mov	%ax, %es
-# put stack at 0x9ff00.
-	mov	%ax, %ss
-	mov	$0xFF00, %sp		# arbitrary value >>512
+	mov	$BOOTSEG, %ax				# BOOTSEG 0x07c0
+	mov	%ax, %ds					# DS = 0x07c0
+	mov	$INITSEG, %ax				# INITSEC 0x9000
+	mov	%ax, %es					# ES = 0x9000
+	mov	$256, %cx					# CX = 256
+	sub	%si, %si					# SI = 0
+	sub	%di, %di					# DI = 0
+	rep								# execute repeat util CX == 0, total 512 bytes
+	movsw							# copy a word 2Bytes
+	ljmp $INITSEG, $go				# jump 0x9000:go
+go:	mov	%cs, %ax					# CS = 0x9000
+	mov	%ax, %ds					# DS = 0x9000
+	mov	%ax, %es					# ES = 0x9000
+	mov	%ax, %ss					# SS = 0x9000, put stack top at 0x9ff00
+	mov	$0xff00, %sp				# x86 FD full decrease stack
 
 # load the setup-sectors directly after the bootblock.
 # Note that 'es' is already set up.
 
 load_setup:
-	mov	$0x0000, %dx		# drive 0, head 0
-	mov	$0x0002, %cx		# sector 2, track 0
-	mov	$0x0200, %bx		# address = 512, in INITSEG
-	.equ    AX, 0x0200+SETUPLEN
-	mov     $AX, %ax		# service 2, nr of sectors
-	int	$0x13			# read it
-	jnc	ok_load_setup		# ok - continue
-	mov	$0x0000, %dx
-	mov	$0x0000, %ax		# reset the diskette
+	mov	$0x0000, %dx				# drive 0, head 0
+	mov	$0x0002, %cx				# sector 2, track 0
+	mov	$0x0200, %bx				# address = 512, in INITSEG
+	mov $0x200+SETUPLEN, %ax		# service 2, nr of sectors, SETUPLEN is 4
+	int	$0x13						# read it
+	jnc	ok_load_setup				# ok - continue
+	mov	$0x0000, %dx				
+	mov	$0x0000, %ax				# reset the diskette
 	int	$0x13
 	jmp	load_setup
 
@@ -83,34 +87,32 @@ ok_load_setup:
 # Get disk drive parameters, specifically nr of sectors/track
 
 	mov	$0x00, %dl
-	mov	$0x0800, %ax		# AH=8 is get drive parameters
+	mov	$0x0800, %ax				# AH=8 is get drive parameters
 	int	$0x13
 	mov	$0x00, %ch
 	#seg cs
-	mov	%cx, %cs:sectors+0	# %cs means sectors is in %cs
+	mov	%cx, %cs:sectors+0			# %cs means sectors is in %cs
 	mov	$INITSEG, %ax
-	mov	%ax, %es
+	mov	%ax, %es					# restore ES
 
 # Print some inane message
-
-	mov	$0x03, %ah		# read cursor pos
+	mov	$0x03, %ah					# read cursor pos
 	xor	%bh, %bh
 	int	$0x10
 	
 	mov	$24, %cx
-	mov	$0x0007, %bx		# page 0, attribute 7 (normal)
-	#lea	msg1, %bp
-	mov     $msg1, %bp
-	mov	$0x1301, %ax		# write string, move cursor
+	mov	$0x0007, %bx				# page 0, attribute 7 (normal)
+	mov $msg1, %bp
+	mov	$0x1301, %ax				# write string, move cursor
 	int	$0x10
 
 # ok, we've written the message, now
 # we want to load the system (at 0x10000)
 
-	mov	$SYSSEG, %ax
-	mov	%ax, %es		# segment of 0x010000
-	call	read_it
-	call	kill_motor
+	mov	$SYSSEG, %ax				# AX = 0x1000
+	mov	%ax, %es					# ES = 0x1000 segment of 0x010000
+	call read_it
+	call kill_motor
 
 # After that we check which root-device to use. If the device is
 # defined (#= 0), nothing is done and the given device is used.
@@ -123,10 +125,10 @@ ok_load_setup:
 	jne	root_defined
 	#seg cs
 	mov	%cs:sectors+0, %bx
-	mov	$0x0208, %ax		# /dev/ps0 - 1.2Mb
+	mov	$0x0208, %ax				# /dev/ps0 - 1.2Mb
 	cmp	$15, %bx
 	je	root_defined
-	mov	$0x021c, %ax		# /dev/PS0 - 1.44Mb
+	mov	$0x021c, %ax				# /dev/PS0 - 1.44Mb
 	cmp	$18, %bx
 	je	root_defined
 undef_root:
@@ -139,7 +141,7 @@ root_defined:
 # the setup-routine loaded directly after
 # the bootblock:
 
-	ljmp	$SETUPSEG, $0
+	ljmp $SETUPSEG, $0				# setup code
 
 # This routine loads the system at address 0x10000, making sure
 # no 64kB boundaries are crossed. We try to load it as fast as
@@ -147,19 +149,20 @@ root_defined:
 #
 # in:	es - starting address segment (normally 0x1000)
 #
-sread:	.word 1+ SETUPLEN	# sectors read of current track
-head:	.word 0			# current head
-track:	.word 0			# current track
+sread:	.word 1+ SETUPLEN			# sectors read of current track
+head:	.word 0						# current head
+track:	.word 0						# current track
 
 read_it:
-	mov	%es, %ax
-	test	$0x0fff, %ax
-die:	jne 	die			# es must be at 64kB boundary
-	xor 	%bx, %bx		# bx is starting address within segment
+	mov	%es, %ax					# AX = 0x1000
+	test $0x0fff, %ax				# ES must be 64KB boundary
+die:	
+	jne die							# es must be at 64kB boundary
+	xor %bx, %bx					# bx is starting address within segment
 rp_read:
-	mov 	%es, %ax
- 	cmp 	$ENDSEG, %ax		# have we loaded all yet?
-	jb	ok1_read
+	mov %es, %ax
+ 	cmp $ENDSEG, %ax				# have we loaded all yet?
+	jb ok1_read
 	ret
 ok1_read:
 	#seg cs
@@ -168,22 +171,22 @@ ok1_read:
 	mov	%ax, %cx
 	shl	$9, %cx
 	add	%bx, %cx
-	jnc 	ok2_read
+	jnc ok2_read
 	je 	ok2_read
-	xor 	%ax, %ax
-	sub 	%bx, %ax
-	shr 	$9, %ax
+	xor %ax, %ax
+	sub %bx, %ax
+	shr $9, %ax
 ok2_read:
-	call 	read_track
-	mov 	%ax, %cx
-	add 	sread, %ax
+	call read_track
+	mov %ax, %cx
+	add sread, %ax
 	#seg cs
-	cmp 	%cs:sectors+0, %ax
-	jne 	ok3_read
-	mov 	$1, %ax
-	sub 	head, %ax
-	jne 	ok4_read
-	incw    track 
+	cmp %cs:sectors+0, %ax
+	jne ok3_read
+	mov $1, %ax
+	sub head, %ax
+	jne ok4_read
+	incw track 
 ok4_read:
 	mov	%ax, head
 	xor	%ax, %ax
@@ -199,10 +202,10 @@ ok3_read:
 	jmp	rp_read
 
 read_track:
-	push	%ax
-	push	%bx
-	push	%cx
-	push	%dx
+	push %ax
+	push %bx
+	push %cx
+	push %dx
 	mov	track, %dx
 	mov	sread, %cx
 	inc	%cx
@@ -234,7 +237,7 @@ bad_rt:	mov	$0, %ax
 # * don't have to worry about it later.
 # */
 kill_motor:
-	push	%dx
+	push %dx
 	mov	$0x3f2, %dx
 	mov	$0, %al
 	outsb
