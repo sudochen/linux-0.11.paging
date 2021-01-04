@@ -2,6 +2,8 @@
 *.bak
 .DS_Store
 *.o
+*.map
+*.sym
 *.a
 *.cfg
 tags
@@ -11,6 +13,8 @@ bochsout.txt
 *.rej
 .gdbinit
 Image
+bootsect
+setup
 kernel.bin
 kernel.sym
 kernel.map

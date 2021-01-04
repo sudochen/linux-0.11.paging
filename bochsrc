@@ -11,8 +11,8 @@ vgaromimage: file=/usr/local/share/bochs/VGABIOS-lgpl-latest
 
 # what disk images will be used
 floppya: 1_44=Image, status=inserted
-floppyb: 1_44=rootimage-0.11-20040305, status=inserted
-ata0-master: type=disk, path="rootfs/hdc-0.11.img", mode=flat, cylinders=410, heads=16, spt=38
+floppyb: 1_44=rootfs/rootimage-0.11-20040305, status=inserted
+ata0-master: type=disk, path="rootfs/hdc-0.11.img", mode=flat, cylinders=121, heads=16, spt=63
 # choose the boot disk.
 boot: a
 
