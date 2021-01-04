@@ -131,13 +131,18 @@ void main(void)		/* This really IS void, no error here. */
 	blk_dev_init();
 	chr_dev_init();
 	tty_init();
+	printk("kernel time init\n");
 	time_init();
+	printk("kernel sched init\n");
 	sched_init();
+	printk("kernel buffer init\n");
 	buffer_init(buffer_memory_end);
+	printk("kernel hd init\n");
 	hd_init();
+	printk("kernel fp init\n");
 	floppy_init();
+	printk("kernel move to user\n");
 	sti();
-	printk("move to user\n");
 	move_to_user_mode();
 	if (!fork()) {		/* we count on this going ok */
 		init();
