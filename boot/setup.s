@@ -17,7 +17,7 @@
 # NOTE! These had better be the same as in bootsect.s!
 
 	.equ INITSEG, 0x9000	# we move boot here - out of the way
-	.equ SYSSEG, 0x1000	# system loaded at 0x10000 (65536).
+	.equ SYSSEG, 0x1000		# system loaded at 0x10000 (65536).
 	.equ SETUPSEG, 0x9020	# this is the current segment
 
 	.global _start, begtext, begdata, begbss, endtext, enddata, endbss
@@ -197,7 +197,7 @@ end_move:
 
 	mov	$0x0001, %ax			# protected mode (PE) bit
 	lmsw %ax					# This is it!
-	ljmp $8, $0				# jmp offset 0 of code segment 0 in gdt
+	ljmp $8, $0					# jmp offset 0 of code segment 0 in gdt
 
 # This routine checks that the keyboard command queue is empty
 # No timeout is used - if this hangs there is something wrong with
