@@ -24,15 +24,15 @@ startup_32:
 	lss stack_start,%esp
 	call setup_idt
 	call setup_gdt
-	movl $0x10,%eax		# reload all the segment registers
-	mov %ax,%ds		# after changing gdt. CS was already
-	mov %ax,%es		# reloaded in 'setup_gdt'
+	movl $0x10,%eax		    # reload all the segment registers
+	mov %ax,%ds		        # after changing gdt. CS was already
+	mov %ax,%es		        # reloaded in 'setup_gdt'
 	mov %ax,%fs
 	mov %ax,%gs
 	lss stack_start,%esp
 	xorl %eax,%eax
-1:	incl %eax		# check that A20 really IS enabled
-	movl %eax,0x000000	# loop forever if it isn't
+1:	incl %eax		        # check that A20 really IS enabled
+	movl %eax,0x000000	    # loop forever if it isn't
 	cmpl %eax,0x100000
 	je 1b
 
@@ -42,10 +42,10 @@ startup_32:
  * 486 users probably want to set the NE (#5) bit also, so as to use
  * int 16 for math errors.
  */
-	movl %cr0,%eax		# check math chip
+	movl %cr0,%eax		    # check math chip
 	andl $0x80000011,%eax	# Save PG,PE,ET
 /* "orl $0x10020,%eax" here for 486 might be good */
-	orl $2,%eax		# set MP
+	orl $2,%eax		        # set MP
 	movl %eax,%cr0
 	call check_x87
 	jmp after_page_tables
@@ -57,13 +57,13 @@ check_x87:
 	fninit
 	fstsw %ax
 	cmpb $0,%al
-	je 1f			/* no coprocessor: have to set bits */
+	je 1f			        /* no coprocessor: have to set bits */
 	movl %cr0,%eax
-	xorl $6,%eax		/* reset MP, set EM */
+	xorl $6,%eax		    /* reset MP, set EM */
 	movl %eax,%cr0
 	ret
 .align 2
-1:	.byte 0xDB,0xE4		/* fsetpm for 287, ignored by 387 */
+1:	.byte 0xDB,0xE4		    /* fsetpm for 287, ignored by 387 */
 	ret
 
 /*
@@ -78,20 +78,32 @@ check_x87:
  *  written by the page tables.
  */
 setup_idt:
-	lea ignore_int,%edx
-	movl $0x00080000,%eax
-	movw %dx,%ax		/* selector = 0x0008 = cs */
-	movw $0x8E00,%dx	/* interrupt gate - dpl=0, present */
+	lea ignore_int,%edx     /* address of edx */
+	movl $0x00080000,%eax   /* EAX is interrupt gat Blow 32bit */
+	movw %dx,%ax		    /* selector = 0x0008 = cs */
+	movw $0x8E00,%dx	    /* interrupt gate - dpl=0, present */
+	                        /* P = 1, DPL=00 D = 1, 32bits */
+	                        /* type = 110 interrupt gate */
 
+	/**************************************************************************************
+	use EAX for interrupt descript blow 32bit
+    Use EDX for interrupt descirpt high 32 bit
+    +----------+---+-----------+---+---+-----------+--------+--------------+----+----------+
+	| H 16bits | P | DPL(2bit) | 0 | D | 3bit type | 3bit 0 | 5bit Reserve | CS | L 16bits |
+	+----------+---+-----------+---+---+-----------+--------+--------------+----+----------+
+	|          | 1 |   00      | 0 | 1 |    110    |   000  |              |  8 |          |
+	+----------+---+-----------+---+---+-----------+--------+--------------+----+----------+
+    ***************************************************************************************/
+    
 	lea idt,%edi
 	mov $256,%ecx
 rp_sidt:
-	movl %eax,(%edi)
-	movl %edx,4(%edi)
-	addl $8,%edi
-	dec %ecx
-	jne rp_sidt
-	lidt idt_descr
+	movl %eax,(%edi)        /* *edi == eax */
+	movl %edx,4(%edi)       /* *(edi + 4) = eds */
+	addl $8,%edi            /* edi = edi + 8, meas next interrupt select descript */
+	dec %ecx                /* ecs -- */
+	jne rp_sidt             /* if not 0 goto rp_sidt */
+	lidt idt_descr          /* load interrupt select descript */
 	ret
 
 /*
@@ -143,7 +155,7 @@ after_page_tables:
 	jmp setup_paging
 L6:
 	jmp L6			# main should never return here, but
-				# just in case, we know what happens.
+				    # just in case, we know what happens.
 
 /* This is the default interrupt "handler" :-) */
 int_msg:
@@ -198,44 +210,114 @@ ignore_int:
  */
 .align 2
 setup_paging:
-	movl $1024*5,%ecx		/* 5 pages - pg_dir+4 page tables */
-	xorl %eax,%eax
-	xorl %edi,%edi			/* pg_dir is at 0x000 */
-	cld;rep;stosl
-	movl $pg0+7,pg_dir		/* set present bit/user r/w */
+	movl $1024*5,%ecx		    /* 5 pages - pg_dir+4 page tables */
+	xorl %eax,%eax              /* EAX is 0 */
+	xorl %edi,%edi			    /* pg_dir is at 0x000, EDI is 0, start address*/
+	cld;rep;stosl               /* stosl *EDI = EAX */
+	/**********************************************************************
+	 address of first page is 0x00001007
+	 bit[12]...bit[31] is the page table heigh 20 bits
+	 when pg_dir is 0x00001007
+	 +-----------------------+----------------------+---------------------+
+	 |  bit[31...22] (10bit) | bit[21...12] (10bit) | bit[11...0] (12bit) |
+	 +-----------------------+----------------------+---------------------+
+	 |          0            |            1         |         7           |
+	 +--------------------------------------------------------------------+
+	 current page_table heigh 20bit address is 1, so page_table address is 0x1000
+	 the page table has the same format
+	 pg_dir address is 0x0000
+	 here we know 
+	 page_table1 address is 0x2000
+	 page_table2 address is 0x3000
+	 page_table3 address is 0x4000
+	 all pg_dir and page_table use 5pages(5*4094) bytes
+	 -------------------------0x0000
+	 0x00001 007
+	 -------------------------0x0004
+	 0x00002 007
+	 -------------------------0x0008
+	 0x00003 007
+	 -------------------------0x000C
+	 0x00004 007
+	 ...
+	 ...
+	 ...
+	 -------------------------0x1000
+     0x00000 007
+     -------------------------0x1004
+     0x00001 007
+     -------------------------0x1008
+     ...
+     ...
+     ...
+	 -------------------------0x2000
+	 0x00400 007
+	 -------------------------0x2004
+	 0x00401 007
+	 -------------------------0x2008
+	 ...
+	 ...
+	 ...
+	 -------------------------0x3000
+	 0x00800 007
+	 -------------------------0x3004
+	 0x00801 007
+	 -------------------------0x3008
+	 ...
+	 ...
+	 ...
+	 -------------------------0x4000
+	 0x00c00 007
+	 -------------------------0x4004
+	 0x00c01 007
+	 -------------------------0x4008
+	 ...
+	 ...
+	 ...
+	 -------------------------0x4ff4
+     0x00ffd 007
+     -------------------------0x4ff8
+     0x00ffe 007
+	 -------------------------0x4ffc
+	 0x00fff 007
+	 -------------------------0x5000
+	 ***********************************************************************/
+	movl $pg0+7,pg_dir		    /* set present bit/user r/w */
 	movl $pg1+7,pg_dir+4		/*  --------- " " --------- */
 	movl $pg2+7,pg_dir+8		/*  --------- " " --------- */
 	movl $pg3+7,pg_dir+12		/*  --------- " " --------- */
-	movl $pg3+4092,%edi
-	movl $0xfff007,%eax		/*  16Mb - 4096 + 7 (r/w user,p) */
-	std
-1:	stosl			/* fill pages backwards - more efficient :-) */
+	
+	movl $pg3+4092,%edi         /* end of this page */
+	movl $0xfff007,%eax		    /* 16Mb - 4096 + 7 (r/w user,p) */
+	std                         /* derection -4 */
+1:	stosl			            /* fill pages backwards - more efficient :-) *EDI=EAS */
 	subl $0x1000,%eax
 	jge 1b
 	cld
-	xorl %eax,%eax		/* pg_dir is at 0x0000 */
-	movl %eax,%cr3		/* cr3 - page directory start */
+	xorl %eax,%eax		        /* pg_dir is at 0x0000 */
+	movl %eax,%cr3		        /* cr3 - page directory start */
 	movl %cr0,%eax
 	orl $0x80000000,%eax
-	movl %eax,%cr0		/* set paging (PG) bit */
-	ret			/* this also flushes prefetch-queue */
+	movl %eax,%cr0		        /* set paging (PG) bit */
+	ret			                /* this also flushes prefetch-queue */
 
 .align 2
 .word 0
 idt_descr:
-	.word 256*8-1		# idt contains 256 entries
+	.word 256*8-1		        # idt contains 256 entries
 	.long idt
 .align 2
 .word 0
 gdt_descr:
-	.word 256*8-1		# so does gdt (not that that's any
-	.long gdt		# magic number, but it works for me :^)
+	.word 256*8-1		        # so does gdt (not that that's any
+	.long gdt		            # magic number, but it works for me :^)
 
 	.align 8
-idt:	.fill 256,8,0		# idt is uninitialized
+idt:	.fill 256,8,0		    # idt is uninitialized
 
-gdt:	.quad 0x0000000000000000	/* NULL descriptor */
+gdt:	
+    .quad 0x0000000000000000	/* NULL descriptor */
 	.quad 0x00c09a0000000fff	/* 16Mb */
 	.quad 0x00c0920000000fff	/* 16Mb */
 	.quad 0x0000000000000000	/* TEMPORARY - don't use */
-	.fill 252,8,0			/* space for LDT's and TSS's etc */
+	.fill 252,8,0			    /* space for LDT's and TSS's etc */
