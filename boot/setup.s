@@ -31,31 +31,40 @@
 #
 # I delte blow code
 #	ljmp $SETUPSEG, $_start
-#
+# 我不知道以上的有什么用，因为直接跳转到_start地址处运行也可以, 因此我注释了
+# 
 _start:
 
 # ok, the read went well so we get current cursor position and save it for
 # posterity.
+# address	bytes	name		description
+# 0x90000	2		光标位置	列号（0x00最左端），行号（0x00最顶端）
+# 0x90002	2		扩展内存数	系统从1M开始的扩展内存数值（KB），实模式下最多访问1M空间	
 
+# 获取当前光标的位置，存放在地址0x90000处，因为bootsect程序此时已经没用了，共512个字节，
+# 
 	mov	$INITSEG, %ax	# this is done in bootsect already, but...
 	mov	%ax, %ds		# DS = 0x9000
 	mov	$0x03, %ah		# read cursor pos
 	xor	%bh, %bh
 	int	$0x10			# save it in known place, con_init fetches
-	mov	%dx, %ds:0		# it from 0x90000.
+	mov	%dx, %ds:0		# it from 0x90000. save current in 0x90000
+#
+# 获取mem的大小，并存放在0x90002处
 # Get memory size (extended mem, kB)
-
 	mov	$0x88, %ah 
 	int	$0x15
 	mov	%ax, %ds:2		# mem size save int 0x90002
 
+#
+# 获取声卡数据存放在0x90004,0x90006处，共四个字节
 # Get video-card data:
-
 	mov	$0x0f, %ah
 	int	$0x10
-	mov	%bx, %ds:4	# bh = display page, address is 0x9004
-	mov	%ax, %ds:6	# al = video mode, ah = window width 0x9006
+	mov	%bx, %ds:4	# bh = display page, address is 0x90004
+	mov	%ax, %ds:6	# al = video mode, ah = window width 0x90006
 
+# 获取EGA/VGA数据，依次存放在0x90008, 0x9000a,  0x9000c处
 # check for EGA/VGA and some config parameters
 
 	mov	$0x12, %ah
@@ -65,6 +74,7 @@ _start:
 	mov	%bx, %ds:10
 	mov	%cx, %ds:12
 
+# 获取hd0的数据，存放在0x90080,128个字节偏移处，共16个字节
 # Get hd0 data
 
 	mov	$0x0000, %ax
@@ -77,6 +87,7 @@ _start:
 	rep
 	movsb
 
+# 获取hd1的数据，存放在0x90090,128+16=144个字节偏移处，共16个字节
 # Get hd1 data
 
 	mov	$0x0000, %ax
@@ -112,7 +123,9 @@ is_disk1:
 	cli							# no interrupts allowed ! 
 
 # first we move the system to it's rightful place
-
+# 下面的代码将0x100000处的代码拷贝到0x00000处，供拷贝0x80000个字节，512KB，内核长度最大不能超过512K的假定前提
+#
+#
 	mov	$0x0000, %ax
 	cld							# 'direction'=0, movs moves forward
 do_move:
@@ -129,7 +142,8 @@ do_move:
 	jmp	do_move
 
 # then we load the segment descriptors
-
+# SETUPSEG 0x9000
+# 当前数据段地址为0x9000
 end_move:
 	mov	$SETUPSEG, %ax			# right, forgot this at first. didn't work :-)
 	mov	%ax, %ds				# DS = 0x9000
@@ -208,7 +222,9 @@ empty_8042:
 	test $2, %al				# is input buffer full?
 	jnz	empty_8042				# yes - loop
 	ret
-
+#
+# 从0地址开始的两个段，数据段和代码段
+#
 gdt:
 	.word	0,0,0,0				# dummy
 
@@ -226,6 +242,10 @@ idt_48:
 	.word	0					# idt limit=0
 	.word	0,0					# idt base=0L
 
+#
+# 0x800表示限制大小在0x800
+# 512+gdt可表示0x200+gdt，表示setup模块所在的的地址+gdt偏移，也就是gdt存放数据信息
+#
 gdt_48:
 	.word	0x800				# gdt limit=2048, 256 GDT entries
 # 512+gdt is the real gdt after setup is moved to 0x9020 * 0x10

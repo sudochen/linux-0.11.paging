@@ -13,6 +13,8 @@ CPP	+= -I../../include
 
 %.o: %.c
 	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
+%.o: %.s
+	$(Q)$(AS) $(AFLAGS) -o $*.o $<
 
 OBJS  = tty_io.o console.o keyboard.o serial.o rs_io.o \
 	tty_ioctl.o
