@@ -1,3 +1,12 @@
+# 
+# BOIS系统调用
+# 我的注释里用20位长度来描述地址，是因为在80386的实模式中
+# 使用了20位的地址线，共寻址1M的内存空间
+# 在0地址处建立1K字节的中断向量表，地址空间为0x00000-0x003ff
+# .code16 表示后面是16位的汇编代码
+#
+# 在AT汇编李，EAX表示32位寄存器，AX表示16位寄存器，AH，AL表示8位寄存器
+#
 	.code16
 # rewrite with AT&T syntax by falcon <wuzhangjin@gmail.com> at 081012
 #
@@ -5,9 +14,19 @@
 # 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 # versions of linux
 #
+# 定义SYSTEM模块的大小，定义为0x30000字节，192KB大小，对于当前的
 	.equ SYSSIZE, SYS_SIZE
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
+#
+# 编译系统编译的镜像存放格式为：
+# | 512 bootsect | 512*4 setup | {head} {system} kernel |
+#
+# BOIS会将启动设备的前512字节拷贝至内存的0x7c00处，并跳转到此处运行
+# bootsect程序主要将自己（512个字节）搬移到0x90000(576K)处
+# 从启动设备继续读取setup模块，存放在自己后面，也就是0x90200地址处（576.5K）处
+# 此时bootsect和setup的结尾地址为0x90a00
+#
 #
 # bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
 # iself out of the way to address 0x90000, and jumps there.
@@ -50,6 +69,14 @@
 # ljmp    $BOOTSEG, $_start
 # 
 #
+# 程序开始运行
+# 设置DS为0x07c0，设置ES为0x9000
+# 将SI和DI清零
+# movsw将DS:SI地址处的数据拷贝到ES:DI处，SI和DI会自动递增，拷贝的次数存放在CX寄存器中
+# 因此下面的代码意思是，
+# 将0x7c00的数据拷贝至0x90000(576K)处, 每次拷贝2个字节，共拷贝256次，512个字节
+# 也就是将bootsect从0x07c00拷贝到0x90000(576K)处
+#
 _start:
 	mov	$BOOTSEG, %ax				# BOOTSEG 0x07c0
 	mov	%ax, %ds					# DS = 0x07c0
@@ -59,17 +86,34 @@ _start:
 	sub	%si, %si					# SI = 0
 	sub	%di, %di					# DI = 0
 	rep								# execute repeat util CX == 0, total 512 bytes
-	movsw							# copy a word 2Bytes
+	movsw							# copy 2Bytes from DS:SI(0x07c00) to ES:DI(0x90000) 512 bytes
+
+# 跳转至$INITSEC:go处运行，INITSEG定义为0x9000
+# 因此也就是跳转至下面的标号“go”的地方开始运行，这条语句会将CS设置为INITSEG
+#
+#	
 	ljmp $INITSEG, $go				# jump 0x9000:go
 go:	mov	%cs, %ax					# CS = 0x9000
 	mov	%ax, %ds					# DS = 0x9000
 	mov	%ax, %es					# ES = 0x9000
 	mov	%ax, %ss					# SS = 0x9000, put stack top at 0x9ff00
-	mov	$0xff00, %sp				# x86 FD full decrease stack
+#
+# 此处设置栈顶地址为0x9ff00
+# 因为bootsec占用512字节，setup占用512*4个字节，从0x90000开始存放bootsect和setup，末尾地址为0x90a00
+# 而x86的栈为FD栈，满减栈，因此0x9ff00和0x90a00的空间都是可以用，而且完全满足要求
+#
+	mov	$0xff00, %sp				# x86 FD stack [full decrease stack]
+	                                # we will copy 4 sectors(2048) form boot device
+	                                # code in 0x90000->0x90a00 and stack top 0x9ff00
 
 # load the setup-sectors directly after the bootblock.
 # Note that 'es' is already set up.
-
+#
+# 下面一段代码使用BOIS系统调用从第二个扇区读，共读取4个扇区，2048个字节，我们
+# 通过前面的注释可是直到setup模块，刚好占用4个扇区，下面代码的左右就是从第二个
+# 扇区开始读取数据，存放在当前数据段的0x200处，也就是0x90200处，读取成功后挑战至
+# ok_load_setup处开始运行
+#
 load_setup:
 	mov	$0x0000, %dx				# drive 0, head 0
 	mov	$0x0002, %cx				# sector 2, track 0
@@ -94,7 +138,8 @@ ok_load_setup:
 	mov	%cx, %cs:sectors+0			# %cs means sectors is in %cs
 	mov	$INITSEG, %ax
 	mov	%ax, %es					# restore ES
-
+#
+# 使用系统掉打印：Loading system ...
 # Print some inane message
 	mov	$0x03, %ah					# read cursor pos
 	xor	%bh, %bh
@@ -106,6 +151,7 @@ ok_load_setup:
 	mov	$0x1301, %ax				# write string, move cursor
 	int	$0x10
 
+# 读取SYS模块，存放在地址0x10000（64K）开始的地方
 # ok, we've written the message, now
 # we want to load the system (at 0x10000)
 
@@ -136,7 +182,13 @@ undef_root:
 root_defined:
 	#seg cs
 	mov	%ax, %cs:root_dev+0
-
+# 
+# 跳转到 SETUPSEG的 0 偏移开始运行，SETUPSEG为0x9020，即地址0x90200，
+# 而0x90200刚好为setup模块的起始地址
+# NOTICE
+# 目前，bootsect和setup在0x90000地址处
+# system模块在0x10000（64K）地址处
+#
 # after that (everyting loaded), we jump to
 # the setup-routine loaded directly after
 # the bootblock:

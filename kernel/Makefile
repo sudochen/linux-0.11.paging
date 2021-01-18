@@ -24,6 +24,8 @@ CPP	+= -I../include
 
 %.o: %.c
 	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
+%.o: %.s
+	$(Q)$(AS) $(AFLAGS) -o $*.o $<
 
 OBJS  = sched.o system_call.o traps.o asm.o fork.o \
 	panic.o printk.o vsprintf.o sys.o exit.o \

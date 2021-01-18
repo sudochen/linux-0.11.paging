@@ -15,15 +15,26 @@
 .globl idt,gdt,pg_dir,tmp_floppy_area
 pg_dir:
 .globl startup_32
+
+/*
+ * 设置数据段为0x10
+ */
 startup_32:
 	movl $0x10,%eax
 	mov %ax,%ds
 	mov %ax,%es
 	mov %ax,%fs
 	mov %ax,%gs
+	/*
+	 * 设置栈顶指针
+	 */
 	lss stack_start,%esp
 	call setup_idt
 	call setup_gdt
+
+	/*
+	 * 重新设置数据段，因为在上面的程序中修改gdt，因此需要重新加载，
+	 */
 	movl $0x10,%eax		    # reload all the segment registers
 	mov %ax,%ds		        # after changing gdt. CS was already
 	mov %ax,%es		        # reloaded in 'setup_gdt'
@@ -77,6 +88,10 @@ check_x87:
  *  sure everything is ok. This routine will be over-
  *  written by the page tables.
  */
+/* 
+ *　setup_idt会将256个中断向量设置为ignore_int
+ *
+ */
 setup_idt:
 	lea ignore_int,%edx     /* address of edx */
 	movl $0x00080000,%eax   /* EAX is interrupt gat Blow 32bit */
@@ -85,15 +100,15 @@ setup_idt:
 	                        /* P = 1, DPL=00 D = 1, 32bits */
 	                        /* type = 110 interrupt gate */
 
-	/**************************************************************************************
+	/***********************************************************************************************
 	use EAX for interrupt descript blow 32bit
     Use EDX for interrupt descirpt high 32 bit
-    +----------+---+-----------+---+---+-----------+--------+--------------+----+----------+
-	| H 16bits | P | DPL(2bit) | 0 | D | 3bit type | 3bit 0 | 5bit Reserve | CS | L 16bits |
-	+----------+---+-----------+---+---+-----------+--------+--------------+----+----------+
-	|          | 1 |   00      | 0 | 1 |    110    |   000  |              |  8 |          |
-	+----------+---+-----------+---+---+-----------+--------+--------------+----+----------+
-    ***************************************************************************************/
+    +----------+---+-----------+---+---+-----------+--------+--------------+-----------+----------+
+	| H 16bits | P | DPL(2bit) | 0 | D | 3bit type | 3bit 0 | 5bit Reserve | 16bits CS | L 16bits |
+	+----------+---+-----------+---+---+-----------+--------+--------------+-----------+----------+
+	|          | 1 |   00      | 0 | 1 |    110    |   000  |              |     8     |          |
+	+----------+---+-----------+---+---+-----------+--------+--------------+-----------+----------+
+    *************************************************************************************************/
     
 	lea idt,%edi
 	mov $256,%ecx
@@ -315,6 +330,9 @@ gdt_descr:
 	.align 8
 idt:	.fill 256,8,0		    # idt is uninitialized
 
+/*
+ * 第二次的全局描述符地址，这个地址是从0地址开始的
+ */
 gdt:	
     .quad 0x0000000000000000	/* NULL descriptor */
 	.quad 0x00c09a0000000fff	/* 16Mb */
