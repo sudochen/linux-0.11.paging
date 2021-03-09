@@ -30,21 +30,21 @@ init/main.o: FORCE
 boot/head.o: boot/head.s FORCE
 	$(Q)(cd boot; make $(S) head.o)
 
-kernel.bin: kernel.sym
-	$(Q)cp -f kernel.sym kernel.tmp
+kernel.bin: kernel.elf
+	$(Q)cp -f kernel.elf kernel.tmp
 	$(Q)$(STRIP) kernel.tmp
 	$(Q)$(OBJCOPY) -O binary -R .note -R .comment kernel.tmp kernel.bin
 	$(Q)rm kernel.tmp
 
-kernel.sym: boot/head.o init/main.o \
+kernel.elf: boot/head.o init/main.o \
 	$(ARCHIVES) $(DRIVERS) $(MATH) $(LIBS) FORCE
 	$(Q)$(LD) $(LDFLAGS) boot/head.o init/main.o \
 	$(ARCHIVES) \
 	$(DRIVERS) \
 	$(MATH) \
 	$(LIBS) \
-	-o kernel.sym
-	$(Q)nm kernel.sym | grep -v '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > kernel.map
+	-o kernel.elf
+	$(Q)nm kernel.elf | grep -v '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > kernel.map
 
 kernel/math/math.a: FORCE
 	$(Q)(cd kernel/math; make $(S))
@@ -75,7 +75,7 @@ boot/bootsect: boot/bootsect.s kernel.bin FORCE
 
 clean:
 	$(Q)rm -f Image kernel.map tmp_make core boot/bootsect boot/setup
-	$(Q)rm -f kernel.sym boot/*.o typescript* info bochsout.txt
+	$(Q)rm -f kernel.elf boot/*.o  typescript* info bochsout.txt
 	$(Q)for i in init mm fs kernel lib boot; do (cd $$i; make $(S) clean); done
 
 qemu:
