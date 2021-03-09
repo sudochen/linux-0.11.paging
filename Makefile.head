@@ -19,6 +19,13 @@ export V Q S
 
 RAMDISK_START ?= 256
 
+%.o: %.c
+	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
+%.o: %.s
+	$(Q)$(AS) $(AFLAGS) -o $*.o $<
+%.s: %.c
+	$(Q)$(CC) $(CFLAGS) -S -o $*.s $<
+
 # Tool for Image building
 BUILD = RAMDISK_START=$(RAMDISK_START) $(TOOL_DIR)/build.sh
 

@@ -400,7 +400,16 @@ void do_no_page(unsigned long error_code,unsigned long address)
 void mem_init(long start_mem, long end_mem)
 {
 	int i;
+    /*
+     LOW的值为0x100000，1MB，不使用1MB以下的内存
+     PAGING_MEMORY的值为15*1024*1024，15MB，表示系统中可以分页处理的内存
+     PAGING_PAGES为PAGING_MEMORY>>12表示有多个页，右移12位相当于除以4096，而4096就是一个页的大小
+     MAP_NR(addr)定义为(((addr) - LOW_MEM) >> 12)表示页编号
 
+     以下的代码意思是系统中的每一个页和mem_map对应，先将所有的页状态设置为USED
+     随后将所有的页状态清零，不知道为什么
+
+     */
 	HIGH_MEMORY = end_mem;
 	for (i=0 ; i<PAGING_PAGES ; i++)
 		mem_map[i] = USED;

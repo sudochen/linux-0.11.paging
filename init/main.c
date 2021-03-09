@@ -110,6 +110,16 @@ void main(void)		/* This really IS void, no error here. */
  * enable them
  */
 
+/*******************************************************************************
+	ORIG_ROOT_DEV为0x901FC，由于在前面的程序中回见bootsect程序拷贝到0x90000处，
+	bootsect的508地址存放的时根设备的编号301，0x1fc=508，所有此处存放的是根设备
+	的设备号;
+	DRIVE_INFO存放的是第一个硬盘信息
+	EXT_MEM_K系统从1MB开始的扩展内存数值(KB)，实模式下最多访问1MB空间
+	memory_end & 0xffff000进行内存对齐，我们看到后面有3个0，一共12位，因此我们
+	知道内核要求页对齐
+	memory_end最多16MB
+*******************************************************************************/
  	ROOT_DEV = ORIG_ROOT_DEV;
  	drive_info = DRIVE_INFO;
 	memory_end = (1<<20) + (EXT_MEM_K<<10);
@@ -126,11 +136,17 @@ void main(void)		/* This really IS void, no error here. */
 #ifdef RAMDISK_SIZE
 	main_memory_start += rd_init(main_memory_start, RAMDISK_SIZE*1024);
 #endif
+/*******************************************************************************
+	创建mem_map数组，并将main_memory_start到memory_end之间的内存
+	以4KB为一组，进行创建
+*******************************************************************************/
 	mem_init(main_memory_start,memory_end);
 	trap_init();
 	blk_dev_init();
 	chr_dev_init();
 	tty_init();
+	printk("mem_start is %dMB, mem_end is %dMB\n", 
+		main_memory_start/(1024*1024), memory_end/(1024*1024));
 	printk("kernel time init\n");
 	time_init();
 	printk("kernel sched init\n");
@@ -142,6 +158,9 @@ void main(void)		/* This really IS void, no error here. */
 	printk("kernel fp init\n");
 	floppy_init();
 	printk("kernel move to user\n");
+/*******************************************************************************
+	sti允许中断
+*******************************************************************************/	
 	sti();
 	move_to_user_mode();
 	if (!fork()) {		/* we count on this going ok */

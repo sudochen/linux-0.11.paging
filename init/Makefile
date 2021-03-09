@@ -8,9 +8,6 @@ ifneq ($(RAMDISK_SIZE),)
   CFLAGS += -DRAMDISK_SIZE=$(RAMDISK_SIZE)
 endif
 
-%.o: %.c
-	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
-
 clean:
 	$(Q)rm -f core *.o *.a tmp_make
 	$(Q)for i in *.c;do rm -f `basename $$i .c`.s;done

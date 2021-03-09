@@ -211,6 +211,11 @@ end_move:
 
 	mov	$0x0001, %ax			# protected mode (PE) bit
 	lmsw %ax					# This is it!
+#
+# $8表示段选择符，8的二进制为00001000 我们知道后一位表示是在全局段中还是
+# 局部段中，bit1:bit2表示权限，此处为0，高13位为段选择子，此处为1，因此
+# 这儿意思是使用最高权限，在全局描述符中使用第一个描述符进行跳转
+#
 	ljmp $8, $0					# jmp offset 0 of code segment 0 in gdt
 
 # This routine checks that the keyboard command queue is empty

@@ -382,16 +382,41 @@ int sys_nice(long increment)
 		current->priority -= increment;
 	return 0;
 }
-
+/*******************************************************************************
+gdt:	
+    .quad 0x0000000000000000	NULL descriptor
+	.quad 0x00c09a0000000fff	16Mb
+	.quad 0x00c0920000000fff	16Mb
+	.quad 0x0000000000000000	TEMPORARY - don't use
+	.fill 252,8,0			    space for LDT's and TSS's etc
+	上面的表为当前系统的全局描述符表，从head.s拷贝而来
+	FIRST_TSS_ENTRY，定义为4,
+	FIRST_LDT_ENTRY，定义为FIRST_TSS_ENTRY =  5，
+	我们由此可以知道init_task占用了2个描述符
+*******************************************************************************/
 void sched_init(void)
 {
 	int i;
 	struct desc_struct * p;
+#if 0
+	init_task.task.state = 0;
+	init_task.task.counter = 15;
+	init_task.task.priority = 15;
+	init_task.task.signal = 0;
+	init_task.task.sigaction = {{},};
+	init_task.task.blocked = 0;
+	init_task.task.exit_code = 0;
+	init_task.task.start_code = 0;
+	init_task.task.end_code = 0;
+#endif
 
 	if (sizeof(struct sigaction) != 16)
 		panic("Struct sigaction MUST be 16 bytes");
 	set_tss_desc(gdt+FIRST_TSS_ENTRY,&(init_task.task.tss));
 	set_ldt_desc(gdt+FIRST_LDT_ENTRY,&(init_task.task.ldt));
+/*******************************************************************************
+	此时p为gdt的第6项，也就是说从第六项开始清理gdt为0，每次清理两项
+*******************************************************************************/
 	p = gdt+2+FIRST_TSS_ENTRY;
 	for(i=1;i<NR_TASKS;i++) {
 		task[i] = NULL;
@@ -400,14 +425,22 @@ void sched_init(void)
 		p->a=p->b=0;
 		p++;
 	}
-/* Clear NT, so that we won't have troubles with that later on */
+/* 	如下代码
+	Clear NT, so that we won't have troubles with that later on 
+	防止任务嵌套和iret时发生任务切换，清NT(bit16)和RF(bit14)位
+ */
 	__asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
+/*******************************************************************************
+	加载LDT和TSS段，参数为pid，此处加载初始进程的LDT和TSS
+	ltr lldt 加载LDT,TSS段到相应的寄存器
+*******************************************************************************/
 	ltr(0);
 	lldt(0);
-	outb_p(0x36,0x43);		/* binary, mode 3, LSB/MSB, ch 0 */
-	outb_p(LATCH & 0xff , 0x40);	/* LSB */
-	outb(LATCH >> 8 , 0x40);	/* MSB */
+	outb_p(0x36,0x43);						/* binary, mode 3, LSB/MSB, ch 0 */
+	outb_p(LATCH & 0xff , 0x40);			/* LSB */
+	outb(LATCH >> 8 , 0x40);				/* MSB */
 	set_intr_gate(0x20,&timer_interrupt);
 	outb(inb_p(0x21)&~0x01,0x21);
 	set_system_gate(0x80,&system_call);
 }
+
