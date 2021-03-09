@@ -18,15 +18,7 @@ DRIVERS =kernel/blk_drv/blk_drv.a kernel/chr_drv/chr_drv.a
 MATH	=kernel/math/math.a
 LIBS	=lib/lib.a
 
-%.s: %.c
-	$(Q)$(CC) $(CFLAGS) -S -o $*.s $<
-%.o: %.s
-	$(Q)$(AS) $(AFLAGS) -o $*.o $<
-%.o: %.c
-	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
-
-all:	Image
-
+all:Image
 Image: boot/bootsect boot/setup kernel.bin FORCE
 	$(BUILD) boot/bootsect boot/setup kernel.bin Image
 	$(Q)rm -f kernel.bin
@@ -45,7 +37,7 @@ kernel.bin: kernel.sym
 	$(Q)rm kernel.tmp
 
 kernel.sym: boot/head.o init/main.o \
-		$(ARCHIVES) $(DRIVERS) $(MATH) $(LIBS) FORCE
+	$(ARCHIVES) $(DRIVERS) $(MATH) $(LIBS) FORCE
 	$(Q)$(LD) $(LDFLAGS) boot/head.o init/main.o \
 	$(ARCHIVES) \
 	$(DRIVERS) \
@@ -94,10 +86,5 @@ bochs:
 
 distclean: clean
 	$(Q)rm -f tag* cscope* linux-0.11.*
-
-dep:
-	$(Q)sed '/\#\#\# Dependencies/q' < Makefile > tmp_make
-	$(Q)cp tmp_make Makefile
-	$(Q)for i in init fs kernel mm; do (cd $$i; make $(S) dep); done
 
 FORCE: ;

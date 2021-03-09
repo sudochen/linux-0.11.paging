@@ -1,31 +1,38 @@
 # 
-# BOIS系统调用
-# 我的注释里用20位长度来描述地址，是因为在80386的实模式中
-# 使用了20位的地址线，共寻址1M的内存空间
-# 在0地址处建立1K字节的中断向量表，地址空间为0x00000-0x003ff
-# .code16 表示后面是16位的汇编代码
+# NOTICE:
+# BOIS system call
+# there is 20bits address length in 80389, and 20bits addressing 1MB memory space
+# BOIS create interrupt table in address 0x00000, use 1KB memory space
 #
-# 在AT汇编李，EAX表示32位寄存器，AX表示16位寄存器，AH，AL表示8位寄存器
+# in AT assemble, EAX is 32bits resgister, AX for 16bits, AH, AL for 8bits
+#
 #
 	.code16
+# 
 # rewrite with AT&T syntax by falcon <wuzhangjin@gmail.com> at 081012
 #
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 # versions of linux
 #
-# 定义SYSTEM模块的大小，定义为0x30000字节，192KB大小，对于当前的
+# NOTICE:
+# SYS_SIZE is the (system size bytes)/16
+#
 	.equ SYSSIZE, SYS_SIZE
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
 #
-# 编译系统编译的镜像存放格式为：
+# NOTICE:
+# the kernel format like this
 # | 512 bootsect | 512*4 setup | {head} {system} kernel |
+# BOIS copy the first sector of booting device to 0x7c00 in memory, one sector has 512 bytes
+# and jump 0x7c00 running
 #
-# BOIS会将启动设备的前512字节拷贝至内存的0x7c00处，并跳转到此处运行
-# bootsect程序主要将自己（512个字节）搬移到0x90000(576K)处
-# 从启动设备继续读取setup模块，存放在自己后面，也就是0x90200地址处（576.5K）处
-# 此时bootsect和setup的结尾地址为0x90a00
+# bootsect copy itself from 0x7c00 to 0x90000(576KB), copy 512 bytes
+# bootsect jump to 0x90000 and copy setup module after itsef, address is 0x90200(576.5KB),
+# setup module has 4 sectors, 2048 bytes
+# so the end of [bootsect + setup] is 0x90a00
+#
 #
 #
 # bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
@@ -72,7 +79,7 @@
 # 程序开始运行
 # 设置DS为0x07c0，设置ES为0x9000
 # 将SI和DI清零
-# movsw将DS:SI地址处的数据拷贝到ES:DI处，SI和DI会自动递增，拷贝的次数存放在CX寄存器中
+# movsw将DS:SI[0x07c00]地址处的数据拷贝到ES:DI[90000]处，SI和DI会自动递增，拷贝的次数存放在CX寄存器中
 # 因此下面的代码意思是，
 # 将0x7c00的数据拷贝至0x90000(576K)处, 每次拷贝2个字节，共拷贝256次，512个字节
 # 也就是将bootsect从0x07c00拷贝到0x90000(576K)处
@@ -100,7 +107,7 @@ go:	mov	%cs, %ax					# CS = 0x9000
 #
 # 此处设置栈顶地址为0x9ff00
 # 因为bootsec占用512字节，setup占用512*4个字节，从0x90000开始存放bootsect和setup，末尾地址为0x90a00
-# 而x86的栈为FD栈，满减栈，因此0x9ff00和0x90a00的空间都是可以用，而且完全满足要求
+# 而x86的栈为FD栈，满减栈，因此从0x90a00到0x9ff00的空间都是可以用，栈顶指针初始值为0x9ff00
 #
 	mov	$0xff00, %sp				# x86 FD stack [full decrease stack]
 	                                # we will copy 4 sectors(2048) form boot device

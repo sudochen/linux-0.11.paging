@@ -5,13 +5,6 @@ LDFLAGS += -r
 CFLAGS	+= -I../include
 CPP	+= -I../include
 
-%.o: %.c
-	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
-%.o: %.s
-	$(Q)$(AS) $(AFLAGS) -o $*.o $<
-%.s: %.c
-	$(Q)$(CC) $(CFLAGS) -S -o $*.s $<
-
 OBJS	= memory.o page.o
 
 all: mm.o
@@ -23,13 +16,7 @@ clean:
 	$(Q)rm -f core *.o *.a tmp_make
 	$(Q)for i in *.c;do rm -f `basename $$i .c`.s;done
 
-dep:
-	$(Q)sed '/\#\#\# Dependencies/q' < Makefile > tmp_make
-	$(Q)(for i in *.c;do $(CPP) -M $$i;done) >> tmp_make
-	$(Q)cp tmp_make Makefile
-
 ### Dependencies:
 memory.o: memory.c ../include/signal.h ../include/sys/types.h \
-  ../include/asm/system.h ../include/linux/sched.h \
-  ../include/linux/head.h ../include/linux/fs.h ../include/linux/mm.h \
-  ../include/linux/kernel.h
+ ../include/asm/system.h ../include/linux/sched.h ../include/linux/head.h \
+ ../include/linux/fs.h ../include/linux/mm.h ../include/linux/kernel.h

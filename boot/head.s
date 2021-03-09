@@ -17,7 +17,7 @@ pg_dir:
 .globl startup_32
 
 /*
- * 设置数据段为0x10
+ * 设置数据段为0x10，全局描述第2个段
  */
 startup_32:
 	movl $0x10,%eax
@@ -27,6 +27,12 @@ startup_32:
 	mov %ax,%gs
 	/*
 	 * 设置栈顶指针
+	 *
+	 * lss reg32, mem32
+	 * 将mem32的值写入reg32, 并将高16位，写入ss stack segment reg
+	 *
+	 * 根据此处定义栈大小为1024， 段寄存器为0x10数据段
+	 *
 	 */
 	lss stack_start,%esp
 	call setup_idt
@@ -102,7 +108,7 @@ setup_idt:
 
 	/***********************************************************************************************
 	use EAX for interrupt descript blow 32bit
-    Use EDX for interrupt descirpt high 32 bit
+    Use EDX for interrupt descirpt high 32bit
     +----------+---+-----------+---+---+-----------+--------+--------------+-----------+----------+
 	| H 16bits | P | DPL(2bit) | 0 | D | 3bit type | 3bit 0 | 5bit Reserve | 16bits CS | L 16bits |
 	+----------+---+-----------+---+---+-----------+--------+--------------+-----------+----------+
@@ -329,6 +335,11 @@ gdt_descr:
 
 	.align 8
 idt:	.fill 256,8,0		    # idt is uninitialized
+
+test_stack: .fill 1024, 4, 0
+g_test_stack:
+	.long test_stack
+	.word 0x10
 
 /*
  * 第二次的全局描述符地址，这个地址是从0地址开始的

@@ -11,9 +11,6 @@ include ../Makefile.head
 CFLAGS	+= -I../include
 CPP	+= -I../include
 
-%.o: %.c
-	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
-
 OBJS  = ctype.o _exit.o open.o close.o errno.o write.o dup.o setsid.o \
 	execve.o wait.o string.o malloc.o
 
@@ -24,12 +21,6 @@ lib.a: $(OBJS)
 clean:
 	$(Q)rm -f core *.o *.a tmp_make
 	$(Q)for i in *.c;do rm -f `basename $$i .c`.s;done
-
-dep:
-	$(Q)sed '/\#\#\# Dependencies/q' < Makefile > tmp_make
-	$(Q)(for i in *.c;do echo -n `echo $$i | sed 's,\.c,\.s,'`" "; \
-		$(CPP) -M $$i;done) >> tmp_make
-	$(Q)cp tmp_make Makefile
 
 ### Dependencies:
 _exit.s _exit.o : _exit.c ../include/unistd.h ../include/sys/stat.h \
