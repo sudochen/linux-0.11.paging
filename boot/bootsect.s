@@ -49,6 +49,14 @@
 # The loader has been made as simple as possible, and continuos
 # read errors will result in a unbreakable loop. Reboot by hand. It
 # loads pretty fast by getting whole sectors at a time whenever possible.
+#
+# 系统上电后，BOIS会将启动扇区的第一个扇区读到0x7c00(31KB)处并跳转到此处运行
+# 第一个扇区的名称为bootsect模块，bootsect会将自己拷贝到0x90000(576KB)处运行
+# 紧接着bootsect会从启动设备的第二个分区拷贝四个分区的数据到0x90200处
+#
+#
+#
+#
 
 	.global _start, begtext, begdata, begbss, endtext, enddata, endbss
 	.text
@@ -68,7 +76,8 @@
 
 # ROOT_DEV:	0x000 - same type of floppy as boot.
 #		0x301 - first partition on first drive etc
-	.equ ROOT_DEV, 0x301
+#	.equ ROOT_DEV, 0x301
+	.equ ROOT_DEV, 0x21D
 #
 # the code will be copy to 0x7c00 and running
 #
@@ -119,7 +128,7 @@ go:	mov	%cs, %ax					# CS = 0x9000
 # 下面一段代码使用BOIS系统调用从第二个扇区读，共读取4个扇区，2048个字节，我们
 # 通过前面的注释可是直到setup模块，刚好占用4个扇区，下面代码的左右就是从第二个
 # 扇区开始读取数据，存放在当前数据段的0x200处，也就是0x90200处，读取成功后挑战至
-# ok_load_setup处开始运行
+# ok_load_setup处开始运行，读取失败后继续进行尝试读取
 #
 load_setup:
 	mov	$0x0000, %dx				# drive 0, head 0

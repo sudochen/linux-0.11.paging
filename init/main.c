@@ -103,7 +103,7 @@ static long main_memory_start = 0;
 
 struct drive_info { char dummy[32]; } drive_info;
 
-void main(void)		/* This really IS void, no error here. */
+void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 {			/* The startup routine assumes (well, ...) this */
 /*
  * Interrupts are still disabled. Do necessary setups, then
@@ -115,9 +115,11 @@ void main(void)		/* This really IS void, no error here. */
 	bootsect的508地址存放的时根设备的编号301，0x1fc=508，所有此处存放的是根设备
 	的设备号;
 	DRIVE_INFO存放的是第一个硬盘信息
-	EXT_MEM_K系统从1MB开始的扩展内存数值(KB)，实模式下最多访问1MB空间
+	EXT_MEM_K系统从1MB开始的扩展内存数值(KB)，复习一下实模式下最多访问1MB空间
 	memory_end & 0xffff000进行内存对齐，我们看到后面有3个0，一共12位，因此我们
-	知道内核要求页对齐
+	知道内核要求页对齐即4KB对其
+
+	我们根据代码看到
 	memory_end最多16MB
 *******************************************************************************/
  	ROOT_DEV = ORIG_ROOT_DEV;
@@ -145,6 +147,7 @@ void main(void)		/* This really IS void, no error here. */
 	blk_dev_init();
 	chr_dev_init();
 	tty_init();
+	printk("a is %d, b is %d, c is %d\n", __a, __b, __c);
 	printk("mem_start is %dMB, mem_end is %dMB\n", 
 		main_memory_start/(1024*1024), memory_end/(1024*1024));
 	printk("kernel time init\n");
