@@ -1,4 +1,5 @@
 *.log
+*.elf
 *.bak
 .DS_Store
 *.o

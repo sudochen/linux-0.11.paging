@@ -47,6 +47,9 @@ startup_32:
 	mov %ax,%fs
 	mov %ax,%gs
 	lss stack_start,%esp
+	/*
+	 * xorl为异或运算，相同为0，不同为1，此处的意思是清零寄存器
+	 */
 	xorl %eax,%eax
 1:	incl %eax		        # check that A20 really IS enabled
 	movl %eax,0x000000	    # loop forever if it isn't
@@ -95,7 +98,7 @@ check_x87:
  *  written by the page tables.
  */
 /* 
- *　setup_idt会将256个中断向量设置为ignore_int
+ *　setup_idt会将256个中断向量设置为ignore_int， lea执行为取有效地址指令
  *
  */
 setup_idt:
@@ -168,9 +171,9 @@ tmp_floppy_area:
 	.fill 1024,1,0
 
 after_page_tables:
-	pushl $0		# These are the parameters to main :-)
-	pushl $0
-	pushl $0
+	pushl $1		# These are the parameters to main :-)
+	pushl $2
+	pushl $3
 	pushl $L6		# return address for main, if it decides to.
 	pushl $main
 	jmp setup_paging
@@ -335,11 +338,6 @@ gdt_descr:
 
 	.align 8
 idt:	.fill 256,8,0		    # idt is uninitialized
-
-test_stack: .fill 1024, 4, 0
-g_test_stack:
-	.long test_stack
-	.word 0x10
 
 /*
  * 第二次的全局描述符地址，这个地址是从0地址开始的
