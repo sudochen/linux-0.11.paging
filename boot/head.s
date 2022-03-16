@@ -348,3 +348,4 @@ gdt:
 	.quad 0x00c0920000000fff	/* 16Mb */
 	.quad 0x0000000000000000	/* TEMPORARY - don't use */
 	.fill 252,8,0			    /* space for LDT's and TSS's etc */
+

@@ -18,7 +18,7 @@
 # NOTICE:
 # SYS_SIZE is the (system size bytes)/16
 #
-	.equ SYSSIZE, SYS_SIZE
+	.equ SYSSIZE, 0x4000
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
 #
@@ -50,6 +50,7 @@
 # read errors will result in a unbreakable loop. Reboot by hand. It
 # loads pretty fast by getting whole sectors at a time whenever possible.
 #
+# 系统上电后，BIOS会将启动个扇区的第一个
 # 系统上电后，BOIS会将启动扇区的第一个扇区读到0x7c00(31KB)处并跳转到此处运行
 # 第一个扇区的名称为bootsect模块，bootsect会将自己拷贝到0x90000(576KB)处运行
 # 紧接着bootsect会从启动设备的第二个分区拷贝四个分区的数据到0x90200处
@@ -141,6 +142,7 @@ load_setup:
 	mov	$0x0000, %ax				# reset the diskette
 	int	$0x13
 	jmp	load_setup
+    
 
 ok_load_setup:
 

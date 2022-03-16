@@ -2,7 +2,7 @@
 OS := $(shell uname)
 TOOL_DIR := tools
 
-ifneq ($V, 1)
+ifeq ($V, 1)
   Q =
   S =
 else
@@ -21,10 +21,13 @@ RAMDISK_START ?= 256
 
 %.o: %.c
 	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
+	$(Q)echo "CC  " $<
 %.o: %.s
 	$(Q)$(AS) $(AFLAGS) -o $*.o $<
+	$(Q)echo "AS  " $<
 %.s: %.c
 	$(Q)$(CC) $(CFLAGS) -S -o $*.s $<
+	$(Q)echo "ASC " $<
 
 # Tool for Image building
 BUILD = RAMDISK_START=$(RAMDISK_START) $(TOOL_DIR)/build.sh

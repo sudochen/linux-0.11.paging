@@ -396,22 +396,33 @@ void do_no_page(unsigned long error_code,unsigned long address)
 	free_page(page);
 	oom();
 }
-
+/*******************************************************************************
+	start_mem用作分页的物理内存的起始地址
+	end_mem 实际物理内存的最大地址
+*******************************************************************************/
 void mem_init(long start_mem, long end_mem)
 {
 	int i;
 
 /*******************************************************************************
-     LOW的值为0x100000，1MB，不使用1MB以下的内存
-     PAGING_MEMORY的值为15*1024*1024，15MB，表示系统中可以分页处理的内存
-     PAGING_PAGES为PAGING_MEMORY>>12表示有多个页，右移12位相当于除以4096，
-     而4096就是一个页的大小
+	HIGH_MEMORY是一个变量，用于记录当前内存的最大限制
 
-     MAP_NR(addr)定义为(((addr) - LOW_MEM) >> 12)表示页编号
+	PAGING_PAGES定义为(PAGING_MEMORY>>12)
+	PAGING_MEMORY的值为15*1024*1024为15MB，在Linux内核中最多能使用的内存为16MB
+	最低的1MB属于内核系统不在内存管理内，即LOW的值为0x100000
 
-     以下的代码意思是系统中的每一个页和mem_map对应，先将所有的页状态设置为USED
-     随后将所有的页状态清零，不知道为什么
+	因此在系统最开始处先将所有的页面就设置为已用后面在根据实际内存数进行清除
 
+	MAP_NR(addr)定义为(((addr) - LOW_MEM) >> 12)表示页编号，我们可以看到页编号
+	去除了最低的1MB空间，并且页编码从start_mem开始，也就是说buffer和ramdisk区域
+	也都被设置为已用
+
+	end_mem -= start_mem计算出可用内存的大小
+	end_mem >>= 12 右移12位相当于除以4096，表示可用内存大小占用的页数
+	然后设置mem_map对应的标志
+
+	此时系统可用内存已经在mem_map进行管理了，哪些页使用过，哪些页还未使用
+	一目了然
 *******************************************************************************/
 
 	HIGH_MEMORY = end_mem;
@@ -431,7 +442,7 @@ void calc_mem(void)
 
 	for(i=0 ; i<PAGING_PAGES ; i++)
 		if (!mem_map[i]) free++;
-	printk("%d pages free (of %d)\n\r",free,PAGING_PAGES);
+	printk("%d pages free (of %d)\n\r", free, PAGING_PAGES);
 	for(i=2 ; i<1024 ; i++) {
 		if (1&pg_dir[i]) {
 			pg_tbl=(long *) (0xfffff000 & pg_dir[i]);

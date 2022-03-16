@@ -202,6 +202,11 @@ void trap_init(void)
 	for (i=17;i<48;i++)
 		set_trap_gate(i,&reserved);
 	set_trap_gate(45,&irq13);
+/******************************************************************************
+	outb_p(inb_p(0x21)&0xfb,0x21); 允许从8259A芯片的IRQ2中断请求
+	outb(inb_p(0xA1)&0xdf,0xA1); 允许从8259A芯片的IRQ13中断请求
+	早起的PC使用的是8259中断控制器，而且使用了两片级联用于增加中断引脚数
+*******************************************************************************/
 	outb_p(inb_p(0x21)&0xfb,0x21);
 	outb(inb_p(0xA1)&0xdf,0xA1);
 	set_trap_gate(39,&parallel_interrupt);
