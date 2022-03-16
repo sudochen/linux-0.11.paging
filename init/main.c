@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <time.h>
 
+
 /*
  * we need this inline - forking from kernel space will result
  * in NO COPY ON WRITE (!!!), until an execve is executed. This
@@ -101,6 +102,8 @@ static long memory_end = 0;
 static long buffer_memory_end = 0;
 static long main_memory_start = 0;
 
+extern int printk(const char * fmt, ...);
+
 struct drive_info { char dummy[32]; } drive_info;
 
 void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
@@ -119,7 +122,10 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	memory_end & 0xffff000进行内存对齐，我们看到后面有3个0，一共12位，因此我们
 	知道内核要求页对齐即4KB对其
 
-	我们根据代码看到
+	我们根据代码看到如果硬盘大于16MB，则内存为16MB,
+	如果内存大于12MB, buffer_memory_end为4MB
+	如果内存大于6MB，buffer_memory_end为2MB
+	否则buffer_memory_end为1M
 	memory_end最多16MB
 *******************************************************************************/
  	ROOT_DEV = ORIG_ROOT_DEV;

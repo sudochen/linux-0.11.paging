@@ -10,8 +10,10 @@ CPP	+= -Iinclude
 # This can be either FLOPPY, /dev/xxxx or empty, in which case the
 # default of hd1(0301) is used by 'build'.
 #
+# ROOT_DEV= 0301	# hd1
+# ROOT_DEV= 021d	# FLOPPY B
+
 ROOT_DEV= 021d	# FLOPPY B
-#ROOT_DEV= 0301	# hd1
 
 ARCHIVES=kernel/kernel.o mm/mm.o fs/fs.o
 DRIVERS =kernel/blk_drv/blk_drv.a kernel/chr_drv/chr_drv.a
@@ -31,10 +33,10 @@ boot/head.o: boot/head.s FORCE
 	$(Q)(cd boot; make $(S) head.o)
 
 kernel.bin: kernel.elf
-	$(Q)cp -f kernel.elf kernel.tmp
-	$(Q)$(STRIP) kernel.tmp
-	$(Q)$(OBJCOPY) -O binary -R .note -R .comment kernel.tmp kernel.bin
-	$(Q)rm kernel.tmp
+	$(Q)cp -f kernel.elf kernel.tmp.elf
+	$(Q)$(STRIP) kernel.tmp.elf
+	$(Q)$(OBJCOPY) -O binary -R .note -R .comment kernel.tmp.elf kernel.bin
+	$(Q)rm kernel.tmp.elf
 
 kernel.elf: boot/head.o init/main.o \
 	$(ARCHIVES) $(DRIVERS) $(MATH) $(LIBS) FORCE
@@ -80,6 +82,9 @@ clean:
 
 qemu:
 	qemu-system-i386 -m 64M -boot a -fda Image  -hda ./rootfs/hdc-0.11.img 
+
+qemuf:
+	qemu-system-i386 -m 64M -boot a -fda Image  -fdb rootfs/rootimage-0.11
 
 bochs:
 	bochs -f bochsrc

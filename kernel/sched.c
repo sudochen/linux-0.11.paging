@@ -383,7 +383,7 @@ int sys_nice(long increment)
 	return 0;
 }
 /*******************************************************************************
-gdt:	
+	gdt:	
     .quad 0x0000000000000000	NULL descriptor
 	.quad 0x00c09a0000000fff	16Mb
 	.quad 0x00c0920000000fff	16Mb
@@ -398,37 +398,40 @@ void sched_init(void)
 {
 	int i;
 	struct desc_struct * p;
-#if 0
-	init_task.task.state = 0;
-	init_task.task.counter = 15;
-	init_task.task.priority = 15;
-	init_task.task.signal = 0;
-	init_task.task.sigaction = {{},};
-	init_task.task.blocked = 0;
-	init_task.task.exit_code = 0;
-	init_task.task.start_code = 0;
-	init_task.task.end_code = 0;
-#endif
-
+	
 	if (sizeof(struct sigaction) != 16)
 		panic("Struct sigaction MUST be 16 bytes");
-	set_tss_desc(gdt+FIRST_TSS_ENTRY,&(init_task.task.tss));
-	set_ldt_desc(gdt+FIRST_LDT_ENTRY,&(init_task.task.ldt));
+	set_tss_desc(gdt+FIRST_TSS_ENTRY, &(init_task.task.tss));
+	set_ldt_desc(gdt+FIRST_LDT_ENTRY, &(init_task.task.ldt));
+	
 /*******************************************************************************
 	此时p为gdt的第6项，也就是说从第六项开始清理gdt为0，每次清理两项
+	p = gdt + 2 + FIRST_TSS_ENTRY
+	2表示本进程要使用的2个描述符
+	FIRST_TSS_ENTRY定义为4表
+	上述的意思是从第6项情理全局描述符，共清理NR_TASKS(64)个进程所需要的128个全局描述符和task数组
+	64个进程包含了init_task进程，如下
+	struct task_struct * task[NR_TASKS] = {&(init_task.task), };
+	我们知道init_task占用了task[0]
 *******************************************************************************/
 	p = gdt+2+FIRST_TSS_ENTRY;
-	for(i=1;i<NR_TASKS;i++) {
+	for(i=1; i<NR_TASKS; i++) {
 		task[i] = NULL;
-		p->a=p->b=0;
+		p->a = p->b=0;
 		p++;
-		p->a=p->b=0;
+		p->a = p->b=0;
 		p++;
 	}
-/* 	如下代码
+/*******************************************************************************
+	如下代码
 	Clear NT, so that we won't have troubles with that later on 
 	防止任务嵌套和iret时发生任务切换，清NT(bit16)和RF(bit14)位
- */
+	pushfl指令是push flags long的缩写，意思是将标志寄存器压栈
+	popfl是将标志寄存器出栈
+	NT用于控制iret的执行具体如下
+	NT = 0 时，用堆栈中保存的值恢复EFlag、CS(代码段寄存器)和EIP(32位指令指针寄存器)，执行常规的中断返回操作；
+	NT = 1 时, 通过任务转换实现中断返回。
+*******************************************************************************/
 	__asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
 /*******************************************************************************
 	加载LDT和TSS段，参数为pid，此处加载初始进程的LDT和TSS
@@ -436,6 +439,12 @@ void sched_init(void)
 *******************************************************************************/
 	ltr(0);
 	lldt(0);
+/*******************************************************************************
+	outb_p(0x36,0x43);						
+	outb_p(LATCH & 0xff , 0x40);			
+	outb(LATCH >> 8 , 0x40);				
+	定时器操作，知道就行
+*******************************************************************************/
 	outb_p(0x36,0x43);						/* binary, mode 3, LSB/MSB, ch 0 */
 	outb_p(LATCH & 0xff , 0x40);			/* LSB */
 	outb(LATCH >> 8 , 0x40);				/* MSB */

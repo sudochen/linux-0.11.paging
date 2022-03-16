@@ -154,6 +154,15 @@ extern void wake_up(struct task_struct ** p);
  */
 #define FIRST_TSS_ENTRY 4
 #define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY+1)
+/*******************************************************************************
+	_TSS(n) 的n表示task的数组标记，我们可以举例如果n为0, 
+	_TSS(n) = 100 000 index is 4
+	_LDT(n) = 101 000 index is 5
+	如果n为1
+	_TSS(1) = 110 000 index is 6
+	_TSS(1) = 111 000 index is 7
+	以上内容可以看出, TSS和LDT存放在GDT中，是一个特殊的描述符
+*******************************************************************************/
 #define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))
 #define _LDT(n) ((((unsigned long) n)<<4)+(FIRST_LDT_ENTRY<<3))
 #define ltr(n) __asm__("ltr %%ax"::"a" (_TSS(n)))
