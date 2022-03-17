@@ -21,13 +21,13 @@ RAMDISK_START ?= 256
 
 %.o: %.c
 	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<
-	$(Q)echo "CC  " $<
+	$(Q)echo "CC    " $<
 %.o: %.s
 	$(Q)$(AS) $(AFLAGS) -o $*.o $<
-	$(Q)echo "AS  " $<
+	$(Q)echo "AS    " $<
 %.s: %.c
 	$(Q)$(CC) $(CFLAGS) -S -o $*.s $<
-	$(Q)echo "ASC " $<
+	$(Q)echo "ASC   " $<
 
 # Tool for Image building
 BUILD = RAMDISK_START=$(RAMDISK_START) $(TOOL_DIR)/build.sh
