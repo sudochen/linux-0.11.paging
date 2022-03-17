@@ -5,6 +5,7 @@ LDFLAGS	+= -Ttext 0 -e _start
 all: bootsect setup
 
 bootsect: bootsect.s ../kernel.bin
+	$(Q)echo "BUILD " $<
 	$(Q)$(AS) $(AFLAGS) -o bootsect.o bootsect.s
 	$(Q)$(LD) $(LDFLAGS) -o bootsect bootsect.o
 	$(Q)cp -f bootsect bootsect.elf
@@ -12,6 +13,7 @@ bootsect: bootsect.s ../kernel.bin
 	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary bootsect
 
 setup: setup.s
+	$(Q)echo "BUILD " $<
 	$(Q)$(AS) $(AFLAGS) -o setup.o setup.s
 	$(Q)$(LD) $(LDFLAGS) -o setup setup.o
 	$(Q)cp -f setup setup.elf
@@ -19,6 +21,7 @@ setup: setup.s
 	$(Q)$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary setup
 
 head.o: head.s
+	$(Q)echo "AS    " $<
 	$(Q)$(AS) $(AFLAGS) -o head.o head.s
 
 clean:

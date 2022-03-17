@@ -1,3 +1,4 @@
+# 仍然是16位指令，在80386实模式下最多访问1MB内存
 	.code16
 # rewrite with AT&T syntax by falcon <wuzhangjin@gmail.com> at 081012
 #
@@ -29,9 +30,11 @@
 	begbss:
 	.text
 #
-# I delte blow code
+# 
 #	ljmp $SETUPSEG, $_start
-# 我不知道以上的有什么用，因为直接跳转到_start地址处运行也可以, 因此我注释了
+# 以上的代码删除掉系统仍然可以运行，以上的代码会修改CS寄存器的内容
+# 因为直接跳转到_start地址处运行也可以, 因此我注释了
+#
 # 
 _start:
 
@@ -119,11 +122,13 @@ no_disk1:
 is_disk1:
 
 # now we want to move to protected mode ...
+# 现在，我们要进入保护模式，先关掉终端
 
 	cli							# no interrupts allowed ! 
 
 # first we move the system to it's rightful place
-# 下面的代码将0x100000处的代码拷贝到0x00000处，供拷贝0x80000个字节，512KB，内核长度最大不能超过512K的假定前提
+# 下面的代码将0x10000处的代码拷贝到0x0000处，供拷贝0x80000个字节512KB，
+# 内核长度最大不能超过512K的假定前提
 #
 #
 	mov	$0x0000, %ax
@@ -142,11 +147,12 @@ do_move:
 	jmp	do_move
 
 # then we load the segment descriptors
-# SETUPSEG 0x9000
-# 当前数据段地址为0x9000
+# SETUPSEG 0x9020
+# 当前数据段地址为0x9020
+# 加载GDT, IDT描述符表，为保护模式做准备
 end_move:
 	mov	$SETUPSEG, %ax			# right, forgot this at first. didn't work :-)
-	mov	%ax, %ds				# DS = 0x9000
+	mov	%ax, %ds				# DS = 0x9020 以为idt_48是相对DS的偏移地址，在上面的代码中该表了DS，在这个地方恢复
 	lidt idt_48					# load idt with 0,0
 	lgdt gdt_48					# load gdt with whatever appropriate
 
@@ -208,13 +214,20 @@ end_move:
 # things as simple as possible, we do no register set-up or anything,
 # we let the gnu-compiled 32-bit programs do that. We just jump to
 # absolute address 0x00000, in 32-bit protected mode.
+# 启用32位保护模式，寻址方式发生变化
 
 	mov	$0x0001, %ax			# protected mode (PE) bit
 	lmsw %ax					# This is it!
 #
-# $8表示段选择符，8的二进制为00001000 我们知道后一位表示是在全局段中还是
-# 局部段中，bit1:bit2表示权限，此处为0，高13位为段选择子，此处为1，因此
-# 这儿意思是使用最高权限，在全局描述符中使用第一个描述符进行跳转
+# 在实模式中段寄存器的值为段地址
+# 在保护模式中段寄存器称为段选择器，里面存放的值为段选择子
+# 在保护模式中$8表示段选择子的为8，其定义如下
+# +--------------------+---------------+------------------+
+# |    索引（13bits）  | 权限（2bits） | 全局/局部(1bits) |
+# +--------------------+---------------+------------------+
+# $8的二进制为00001000,根据以上可以看出是全局描述符（1），最高权限（00），索引为1
+#
+# 根据后面的全局描述符表gdt可以知道，此处是代码段，基地址为0，也是Image模块的Head的地址
 #
 	ljmp $8, $0					# jmp offset 0 of code segment 0 in gdt
 
@@ -228,7 +241,7 @@ empty_8042:
 	jnz	empty_8042				# yes - loop
 	ret
 #
-# 从0地址开始的两个段，数据段和代码段
+# 从0地址开始的两个段，数据段和代码段，基地址为0，长度为8MB
 #
 gdt:
 	.word	0,0,0,0				# dummy
@@ -250,6 +263,10 @@ idt_48:
 #
 # 0x800表示限制大小在0x800
 # 512+gdt可表示0x200+gdt，表示setup模块所在的的地址+gdt偏移，也就是gdt存放数据信息
+# LGDT, LIDT指令后面根据地址是线性地址，这两个指令是仅有的能够加载线性地址的指令
+# 也就是说不管段寄存器是什么值，都看作0，这两个指令通过在实模式中使用
+# 以便于处理器在切换到保护模式之前进行初始化
+#
 #
 gdt_48:
 	.word	0x800				# gdt limit=2048, 256 GDT entries
@@ -262,3 +279,4 @@ endtext:
 enddata:
 .bss
 endbss:
+

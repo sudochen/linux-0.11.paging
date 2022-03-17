@@ -2,7 +2,7 @@
 include Makefile.head
 
 LDFLAGS	+= -Ttext 0 -e startup_32
-CFLAGS	+= -Iinclude
+CFLAGS	+= -Iinclude -Wall
 CPP	+= -Iinclude
 
 #
@@ -93,3 +93,5 @@ distclean: clean
 	$(Q)rm -f tag* cscope* linux-0.11.*
 
 FORCE: ;
+
+.PHONE: Image kernel.elf kernel.bin
