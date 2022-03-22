@@ -68,7 +68,7 @@ nr_system_calls = 72
 .globl system_call,sys_fork,timer_interrupt,sys_execve
 .globl hd_interrupt,floppy_interrupt,parallel_interrupt
 .globl device_not_available, coprocessor_error
-.globl switch_to, first_return_from_kernel
+.globl switch_to_by_stack, first_return_from_kernel
 
 .align 2
 bad_sys_call:
@@ -148,7 +148,7 @@ coprocessor_error:
 	jmp math_error
 
 .align 2
-switch_to:
+switch_to_by_stack:
     pushl %ebp
     movl %esp,%ebp
     pushl %ecx

@@ -181,7 +181,8 @@ __asm__("str %%ax\n\t" \
  * This also clears the TS-flag if the task we switched to has used
  * tha math co-processor latest.
  */
-#if 0
+//#define CONFIG_TASK_TSS 1
+#ifdef CONFIG_TASK_TSS
 #define switch_to(n) {\
 struct {long a,b;} __tmp; \
 __asm__("cmpl %%ecx,current\n\t" \
