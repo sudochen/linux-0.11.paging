@@ -101,7 +101,8 @@ void math_state_restore()
  * tasks can run. It can not be killed, and it cannot sleep. The 'state'
  * information in task[0] is never used.
  */
-extern void switch_to(long, long);
+
+extern void switch_to_by_stack(long, long);
 void schedule(void)
 {
 	int i,next,c;
@@ -142,8 +143,11 @@ void schedule(void)
 				(*p)->counter = ((*p)->counter >> 1) +
 						(*p)->priority;
 	}
-	
-	switch_to((long)pnext, (long)(_LDT(next)));
+#ifndef CONFIG_TASK_TSS
+	switch_to_by_stack((long)pnext, (long)(_LDT(next)));
+#else
+	switch_to(next);
+#endif
 }
 
 int sys_pause(void)
