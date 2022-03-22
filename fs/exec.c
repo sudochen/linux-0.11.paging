@@ -192,20 +192,44 @@ int do_execve(unsigned long * eip,long tmp,char * filename,
 	int sh_bang = 0;
 	unsigned long p=PAGE_SIZE*MAX_ARG_PAGES-4;
 
+	/* 
+	 * eip[i]表示栈中返回的cs地址
+	 * 其中的选择子不能为内核选择子，也就是说内核程序不能调用此函数
+	 *
+	 */
 	if ((0xffff & eip[1]) != 0x000f)
 		panic("execve called from supervisor mode");
+
+	/* 
+	 * 初始化参数和环境的页表
+	 *
+	 */
 	for (i=0 ; i<MAX_ARG_PAGES ; i++)	/* clear page-table */
 		page[i]=0;
+	/*
+	 * 获取可执行文件的对应的inode 
+	 *
+	 */
 	if (!(inode=namei(filename)))		/* get executables inode */
 		return -ENOENT;
+
+	/*
+	 *
+	 */
 	argc = count(argv);
 	envc = count(envp);
 	
 restart_interp:
+	/*
+	 * 必须是一个常规文件
+	 */
 	if (!S_ISREG(inode->i_mode)) {	/* must be regular file */
 		retval = -EACCES;
 		goto exec_error2;
 	}
+	/* 权限检查
+	 *
+	 */
 	i = inode->i_mode;
 	e_uid = (i & S_ISUID) ? inode->i_uid : current->euid;
 	e_gid = (i & S_ISGID) ? inode->i_gid : current->egid;
@@ -218,11 +242,21 @@ restart_interp:
 		retval = -ENOEXEC;
 		goto exec_error2;
 	}
+	/*
+	 * 读取一块数据
+	 */
 	if (!(bh = bread(inode->i_dev,inode->i_zone[0]))) {
 		retval = -EACCES;
 		goto exec_error2;
 	}
+	/*
+	 * 获取文件头部
+	 */
 	ex = *((struct exec *) bh->b_data);	/* read exec-header */
+
+	/*
+	 * 如果是脚本则执行脚本
+	 */
 	if ((bh->b_data[0] == '#') && (bh->b_data[1] == '!') && (!sh_bang)) {
 		/*
 		 * This section does the #! interpretation.

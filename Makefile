@@ -20,7 +20,7 @@ DRIVERS =kernel/blk_drv/blk_drv.a kernel/chr_drv/chr_drv.a
 MATH	=kernel/math/math.a
 LIBS	=lib/lib.a
 
-all:Image
+all: clean Image
 Image: boot/bootsect boot/setup kernel.bin FORCE
 	$(BUILD) boot/bootsect boot/setup kernel.bin Image
 	$(Q)rm -f kernel.bin
@@ -84,7 +84,7 @@ qemu:
 	qemu-system-i386 -m 64M -boot a -fda Image  -hda ./rootfs/hdc-0.11.img 
 
 qemuf:
-	qemu-system-i386 -m 64M -boot a -fda Image  -fdb rootfs/rootimage-0.11
+	qemu-system-i386 -m 64M -boot a -fda Image  -fdb ./rootfs/rootimage-0.11
 
 bochs:
 	bochs -f bochsrc

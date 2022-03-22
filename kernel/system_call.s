@@ -51,6 +51,7 @@ priority = 8
 signal	= 12
 sigaction = 16		# MUST be 16 (=len of sigaction)
 blocked = (33*16)
+stack_top = (33*16+4)
 
 # offsets within sigaction
 sa_handler = 0
@@ -67,6 +68,7 @@ nr_system_calls = 72
 .globl system_call,sys_fork,timer_interrupt,sys_execve
 .globl hd_interrupt,floppy_interrupt,parallel_interrupt
 .globl device_not_available, coprocessor_error
+.globl switch_to, first_return_from_kernel
 
 .align 2
 bad_sys_call:
@@ -76,47 +78,48 @@ bad_sys_call:
 reschedule:
 	pushl $ret_from_sys_call
 	jmp schedule
+
 .align 2
 system_call:
-	cmpl $nr_system_calls-1,%eax
-	ja bad_sys_call
+	cmpl $nr_system_calls-1,%eax    # 判断系统调用号是否合法
+	ja bad_sys_call                 # 如果不可合法则跳到bad_sys_call处，并将eax设置为-1,作为返回值
 	push %ds
 	push %es
-	push %fs
+	push %fs                        # 保存段选择子的内容，CS和IP在执行INT指令时都已经压入栈中，IRET时恢复
 	pushl %edx
-	pushl %ecx		# push %ebx,%ecx,%edx as parameters
-	pushl %ebx		# to the system call
-	movl $0x10,%edx		# set up ds,es to kernel space
-	mov %dx,%ds
-	mov %dx,%es
-	movl $0x17,%edx		# fs points to local data space
-	mov %dx,%fs
-	call *sys_call_table(,%eax,4)
-	pushl %eax
-	movl current,%eax
-	cmpl $0,state(%eax)		# state
-	jne reschedule
-	cmpl $0,counter(%eax)		# counter
+	pushl %ecx		                # push %ebx,%ecx,%edx as parameters
+	pushl %ebx		                # to the system call
+	movl $0x10,%edx		            # set up ds,es to kernel space, 设置
+	mov %dx,%ds                     # 设置数据段为内核数据段
+	mov %dx,%es                     # 设置附加段为内核数据段， 代码段在执行INT指令时已经设置了
+	movl $0x17,%edx		            # fs points to local data space
+	mov %dx,%fs                     # 设置FS为用户段选择子
+	call *sys_call_table(,%eax,4)   # call地址sys_call_table + eax * 4, 即调用sys_fork程序，此时会将下一条指令的EIP入栈
+	pushl %eax                      # 返回值存放在eax中
+	movl current,%eax               # 取当前进程指针存放在eax中
+	cmpl $0,state(%eax)		        # state 
+	jne reschedule                  # 如果state不等于0则运行重新调度程序
+	cmpl $0,counter(%eax)		    # counter，如果在运行状态但是时间片用完了也执行调用程序
 	je reschedule
 ret_from_sys_call:
-	movl current,%eax		# task[0] cannot have signals
-	cmpl task,%eax
+	movl current,%eax		        # task[0] cannot have signals
+	cmpl task,%eax                  # 判断是不是任务0，如果是跳到标号3处运行，任务0不执行信号处理
 	je 3f
-	cmpw $0x0f,CS(%esp)		# was old code segment supervisor ?
+	cmpw $0x0f,CS(%esp)		        # was old code segment supervisor ? 如果是调用者是内核程序也不进行信号处理
 	jne 3f
-	cmpw $0x17,OLDSS(%esp)		# was stack segment = 0x17 ?
+	cmpw $0x17,OLDSS(%esp)		    # was stack segment = 0x17 ?  如果原堆栈也是内核也退出
 	jne 3f
-	movl signal(%eax),%ebx
-	movl blocked(%eax),%ecx
-	notl %ecx
-	andl %ebx,%ecx
-	bsfl %ecx,%ecx
-	je 3f
+	movl signal(%eax),%ebx          # 取信号位图
+	movl blocked(%eax),%ecx         # 取信号屏蔽位图
+	notl %ecx                       # 信号屏蔽位图取反
+	andl %ebx,%ecx                  # 获得信号位图
+	bsfl %ecx,%ecx                  # 如果为0则表示没有信号处理
+	je 3f                           #   
 	btrl %ecx,%ebx
-	movl %ebx,signal(%eax)
+	movl %ebx,signal(%eax)          # 信号
 	incl %ecx
 	pushl %ecx
-	call do_signal
+	call do_signal                  # 调用信号处理函数
 	popl %eax
 3:	popl %eax
 	popl %ebx
@@ -145,6 +148,54 @@ coprocessor_error:
 	jmp math_error
 
 .align 2
+switch_to:
+    pushl %ebp
+    movl %esp,%ebp
+    pushl %ecx
+    pushl %ebx
+    pushl %eax
+    movl 8(%ebp),%ebx
+    cmpl %ebx,current
+    je 1f
+    # switch_to PCB
+    movl %ebx,%eax
+	xchgl %eax,current
+    # rewrite TSS pointer
+    movl tss,%ecx
+    addl $4096,%ebx
+    movl %ebx,4(%ecx)
+    # switch_to system core stack
+    movl %esp,stack_top(%eax)
+    movl 8(%ebp),%ebx
+    movl stack_top(%ebx),%esp
+    # switch_to LDT
+	movl 12(%ebp), %ecx
+    lldt %cx
+    movl $0x17,%ecx
+	mov %cx,%fs
+    # nonsense
+    cmpl %eax,last_task_used_math 
+    jne 1f
+    clts
+1:    
+    popl %eax
+    popl %ebx
+    popl %ecx
+    popl %ebp
+    ret
+
+.align 2
+first_return_from_kernel: 
+    popl %edx
+    popl %edi
+    popl %esi
+    pop %gs
+    pop %fs
+    pop %es
+    pop %ds
+    iret
+
+.align 2
 device_not_available:
 	push %ds
 	push %es
@@ -159,9 +210,9 @@ device_not_available:
 	movl $0x17,%eax
 	mov %ax,%fs
 	pushl $ret_from_sys_call
-	clts				# clear TS so that we can use math
+	clts				            # clear TS so that we can use math
 	movl %cr0,%eax
-	testl $0x4,%eax			# EM (math emulation bit)
+	testl $0x4,%eax			        # EM (math emulation bit)
 	je math_state_restore
 	pushl %ebp
 	pushl %esi
@@ -174,49 +225,49 @@ device_not_available:
 
 .align 2
 timer_interrupt:
-	push %ds		# save ds,es and put kernel data space
-	push %es		# into them. %fs is used by _system_call
+	push %ds		                # save ds,es and put kernel data space
+	push %es		                # into them. %fs is used by _system_call
 	push %fs
-	pushl %edx		# we save %eax,%ecx,%edx as gcc doesn't
-	pushl %ecx		# save those across function calls. %ebx
-	pushl %ebx		# is saved as we use that in ret_sys_call
-	pushl %eax
-	movl $0x10,%eax
-	mov %ax,%ds
-	mov %ax,%es
-	movl $0x17,%eax
-	mov %ax,%fs
-	incl jiffies
-	movb $0x20,%al		# EOI to interrupt controller #1
-	outb %al,$0x20
-	movl CS(%esp),%eax
-	andl $3,%eax		# %eax is CPL (0 or 3, 0=supervisor)
-	pushl %eax
-	call do_timer		# 'do_timer(long CPL)' does everything from
-	addl $4,%esp		# task switching to accounting ...
+	pushl %edx		                # we save %eax,%ecx,%edx as gcc doesn't
+	pushl %ecx		                # save those across function calls. %ebx
+	pushl %ebx		                # is saved as we use that in ret_sys_call
+	pushl %eax                      # 以上保持各种寄存器，因为后续调用了ret_from_sys_call因此需要构造一个栈
+	movl $0x10,%eax                 # 内核数据段
+	mov %ax,%ds                     # ds设置为内核数据段
+	mov %ax,%es                     # es设置为内核数据段
+	movl $0x17,%eax                 #
+	mov %ax,%fs                     # fs设置为用户数据断
+	incl jiffies                    # 增加jiffies计数
+	movb $0x20,%al		            # EOI to interrupt controller #1，结束中断指令
+	outb %al,$0x20                  #
+	movl CS(%esp),%eax              # 从堆栈中取出CS的值
+	andl $3,%eax		            # %eax is CPL (0 or 3, 0=supervisor)
+	pushl %eax                      # eax作为参数入栈
+	call do_timer		            # 'do_timer(long CPL)' does everything from
+	addl $4,%esp		            # task switching to accounting ... 恢复参数
 	jmp ret_from_sys_call
 
 .align 2
 sys_execve:
-	lea EIP(%esp),%eax
-	pushl %eax
-	call do_execve
-	addl $4,%esp
-	ret
+	lea EIP(%esp),%eax              # 取系统调用返回地址的地址
+	pushl %eax                      # 将系统调用返回地址的地址入栈作为第一个参数
+	call do_execve                  # 执行do_execve调用
+	addl $4,%esp                    # 修复栈
+	ret                             # 返回
 
 .align 2
 sys_fork:
-	call find_empty_process
-	testl %eax,%eax
+	call find_empty_process         # 寻找一个空的task_struct
+	testl %eax,%eax                 # 测试eax是负数还是0，如果是负数或者0，则跳转至1标号
 	js 1f
-	push %gs
+	push %gs                        # push gs esi edi ebp没什么实际意思，只是想将当前被中断的用户进程的数据作为参数传递到copy_process中
 	pushl %esi
 	pushl %edi
 	pushl %ebp
-	pushl %eax
-	call copy_process
-	addl $20,%esp
-1:	ret
+	pushl %eax                      # eax是进程号，也就是find_empty_process的返回值，为数组的下标
+	call copy_process               # 入栈，为什么后面是20, 我猜测应该push %gs也是占用4个字节，只是高地址数据无效
+	addl $20,%esp                   # 还原栈指针, 因为前面通过栈传递了copy_process的参数
+1:	ret                             # 子程序返回
 
 hd_interrupt:
 	pushl %eax
@@ -232,7 +283,7 @@ hd_interrupt:
 	mov %ax,%fs
 	movb $0x20,%al
 	outb %al,$0xA0		# EOI to interrupt controller #1
-	jmp 1f			# give port chance to breathe
+	jmp 1f			    # give port chance to breathe
 1:	jmp 1f
 1:	xorl %edx,%edx
 	xchgl do_hd,%edx
@@ -240,7 +291,7 @@ hd_interrupt:
 	jne 1f
 	movl $unexpected_hd_interrupt,%edx
 1:	outb %al,$0x20
-	call *%edx		# "interesting" way of handling intr.
+	call *%edx		    # "interesting" way of handling intr.
 	pop %fs
 	pop %es
 	pop %ds
@@ -268,7 +319,7 @@ floppy_interrupt:
 	testl %eax,%eax
 	jne 1f
 	movl $unexpected_floppy_interrupt,%eax
-1:	call *%eax		# "interesting" way of handling intr.
+1:	call *%eax		    # "interesting" way of handling intr.
 	pop %fs
 	pop %es
 	pop %ds
@@ -283,3 +334,4 @@ parallel_interrupt:
 	outb %al,$0x20
 	popl %eax
 	iret
+	

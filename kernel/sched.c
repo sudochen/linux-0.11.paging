@@ -56,7 +56,7 @@ union task_union {
 };
 
 static union task_union init_task = {INIT_TASK,};
-
+struct tss_struct *tss = &(init_task.task.tss);
 long volatile jiffies=0;
 long startup_time=0;
 struct task_struct *current = &(init_task.task);
@@ -101,9 +101,11 @@ void math_state_restore()
  * tasks can run. It can not be killed, and it cannot sleep. The 'state'
  * information in task[0] is never used.
  */
+extern void switch_to(long, long);
 void schedule(void)
 {
 	int i,next,c;
+	struct task_struct *pnext = &(init_task.task);
 	struct task_struct ** p;
 
 /* check alarm, wake up any interruptible tasks that have got a signal */
@@ -119,18 +121,20 @@ void schedule(void)
 				(*p)->state=TASK_RUNNING;
 		}
 
-/* this is the scheduler proper: */
+	/* this is the scheduler proper: */
 
 	while (1) {
 		c = -1;
 		next = 0;
+		pnext = task[next];
+		
 		i = NR_TASKS;
 		p = &task[NR_TASKS];
 		while (--i) {
 			if (!*--p)
 				continue;
 			if ((*p)->state == TASK_RUNNING && (*p)->counter > c)
-				c = (*p)->counter, next = i;
+				c = (*p)->counter, pnext = *p, next = i; 
 		}
 		if (c) break;
 		for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
@@ -138,7 +142,8 @@ void schedule(void)
 				(*p)->counter = ((*p)->counter >> 1) +
 						(*p)->priority;
 	}
-	switch_to(next);
+	
+	switch_to((long)pnext, (long)(_LDT(next)));
 }
 
 int sys_pause(void)
@@ -312,11 +317,17 @@ void do_timer(long cpl)
 		if (!--beepcount)
 			sysbeepstop();
 
+	/*
+	 * 增加内核时间或用户时间计数
+	 */
 	if (cpl)
 		current->utime++;
 	else
 		current->stime++;
 
+	/*
+	 * 如果有定时器存在则处理定制器相关
+	 */
 	if (next_timer) {
 		next_timer->jiffies--;
 		while (next_timer && next_timer->jiffies <= 0) {
