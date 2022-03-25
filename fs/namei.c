@@ -294,7 +294,7 @@ static struct m_inode * dir_namei(const char * pathname,
 }
 
 /*
- *	namei()
+ * namei()
  *
  * is used by most simple commands to get the inode of a specified name.
  * Open, link etc use their own routines, but this is enough for things
@@ -716,6 +716,11 @@ int sys_unlink(const char * name)
 	iput(inode);
 	iput(dir);
 	return 0;
+}
+
+int sys_symlink(const char * oldname, const char * newname)
+{
+	return -EPERM;
 }
 
 int sys_link(const char * oldname, const char * newname)

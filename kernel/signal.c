@@ -7,8 +7,8 @@
 #include <linux/sched.h>
 #include <linux/kernel.h>
 #include <asm/segment.h>
-
 #include <signal.h>
+#include <errno.h>
 
 void do_exit(int error_code);
 
@@ -23,6 +23,19 @@ int sys_ssetmask(int newmask)
 
 	current->blocked = newmask & ~(1<<(SIGKILL-1));
 	return old;
+}
+
+int sys_sigpending(sigset_t *set)
+{
+    /* fill in "set" with signals pending but blocked. */
+    verify_area(set,4);
+    put_fs_long(current->blocked & current->signal, (unsigned long *)set);
+    return 0;
+}
+
+int sys_sigsuspend(int restart, unsigned long old_mask, unsigned long set)
+{
+	return -EINTR;
 }
 
 static inline void save_old(char * from,char * to)

@@ -13,6 +13,35 @@
 #include <sys/times.h>
 #include <sys/utsname.h>
 
+#define NGROUPS				32	/* Max number of groups per user */
+#define NOGROUP				-1
+#define MAXHOSTNAMELEN 		8
+
+
+struct rlimit {
+	int	rlim_cur;
+	int	rlim_max;
+};
+
+struct	rusage {
+	struct timeval ru_utime;	/* user time used */
+	struct timeval ru_stime;	/* system time used */
+	long	ru_maxrss;		/* maximum resident set size */
+	long	ru_ixrss;		/* integral shared memory size */
+	long	ru_idrss;		/* integral unshared data size */
+	long	ru_isrss;		/* integral unshared stack size */
+	long	ru_minflt;		/* page reclaims */
+	long	ru_majflt;		/* page faults */
+	long	ru_nswap;		/* swaps */
+	long	ru_inblock;		/* block input operations */
+	long	ru_oublock;		/* block output operations */
+	long	ru_msgsnd;		/* messages sent */
+	long	ru_msgrcv;		/* messages received */
+	long	ru_nsignals;		/* signals received */
+	long	ru_nvcsw;		/* voluntary context switches */
+	long	ru_nivcsw;		/* involuntary " */
+};
+
 int sys_ftime()
 {
 	return -ENOSYS;
@@ -153,6 +182,8 @@ int sys_stime(long * tptr)
 	return 0;
 }
 
+
+
 int sys_times(struct tms * tbuf)
 {
 	if (tbuf) {
@@ -203,6 +234,11 @@ int sys_getpgrp(void)
 	return current->pgrp;
 }
 
+int sys_select( unsigned long *buffer )
+{
+	return -ERROR;
+}
+
 int sys_setsid(void)
 {
 	if (current->leader && !suser())
@@ -211,6 +247,16 @@ int sys_setsid(void)
 	current->session = current->pgrp = current->pid;
 	current->tty = -1;
 	return current->pgrp;
+}
+
+int sys_getgroups(int gidsetsize, gid_t *grouplist)
+{
+	return -ERROR;
+}
+
+int sys_setgroups(int gidsetsize, gid_t *grouplist)
+{
+	return -ERROR;
 }
 
 int sys_uname(struct utsname * name)
@@ -227,6 +273,37 @@ int sys_uname(struct utsname * name)
 	return 0;
 }
 
+int sys_sethostname(char *name, int len)
+{
+	return -ERROR;
+}
+
+int sys_getrlimit(int resource, struct rlimit *rlim)
+{
+	return -ERROR;
+
+}
+
+int sys_setrlimit(int resource, struct rlimit *rlim)
+{
+	return -ERROR;
+}
+
+int sys_getrusage(int who, struct rusage *ru)
+{
+	return -ERROR;
+}
+
+int sys_gettimeofday(struct timeval *tv, struct timezone *tz)
+{
+	return -ERROR;
+}
+
+int sys_settimeofday(struct timeval *tv, struct timezone *tz)
+{
+	return -ERROR;
+}
+
 int sys_umask(int mask)
 {
 	int old = current->umask;
@@ -234,3 +311,4 @@ int sys_umask(int mask)
 	current->umask = mask & 0777;
 	return (old);
 }
+

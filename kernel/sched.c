@@ -418,6 +418,9 @@ void sched_init(void)
 		panic("Struct sigaction MUST be 16 bytes");
 	set_tss_desc(gdt+FIRST_TSS_ENTRY, &(init_task.task.tss));
 	set_ldt_desc(gdt+FIRST_LDT_ENTRY, &(init_task.task.ldt));
+
+	printk("init_task use GTD %d for TSS\n", FIRST_TSS_ENTRY);
+	printk("init_task use GTD %d for LDT\n", FIRST_LDT_ENTRY);
 	
 /*******************************************************************************
 	此时p为gdt的第6项，也就是说从第六项开始清理gdt为0，每次清理两项
@@ -429,6 +432,7 @@ void sched_init(void)
 	struct task_struct * task[NR_TASKS] = {&(init_task.task), };
 	我们知道init_task占用了task[0]
 *******************************************************************************/
+
 	p = gdt+2+FIRST_TSS_ENTRY;
 	for(i=1; i<NR_TASKS; i++) {
 		task[i] = NULL;
@@ -436,6 +440,7 @@ void sched_init(void)
 		p++;
 		p->a = p->b=0;
 		p++;
+		
 	}
 /*******************************************************************************
 	如下代码
@@ -452,7 +457,9 @@ void sched_init(void)
 	加载LDT和TSS段，参数为pid，此处加载初始进程的LDT和TSS
 	ltr lldt 加载LDT,TSS段到相应的寄存器
 *******************************************************************************/
+	printk("Load TSS\n");
 	ltr(0);
+	printk("Load LDT\n");
 	lldt(0);
 /*******************************************************************************
 	outb_p(0x36,0x43);						
@@ -463,8 +470,10 @@ void sched_init(void)
 	outb_p(0x36,0x43);						/* binary, mode 3, LSB/MSB, ch 0 */
 	outb_p(LATCH & 0xff , 0x40);			/* LSB */
 	outb(LATCH >> 8 , 0x40);				/* MSB */
+	printk("Enable timer_interrupt\n");
 	set_intr_gate(0x20,&timer_interrupt);
 	outb(inb_p(0x21)&~0x01,0x21);
+	printk("Enable system_call\n");
 	set_system_gate(0x80,&system_call);
 }
 

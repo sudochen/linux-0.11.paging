@@ -38,6 +38,11 @@ extern int sys_close(int fd);
  */
 #define MAX_ARG_PAGES 32
 
+int sys_uselib(const char * library)
+{
+	return -ENOENT;
+}
+
 /*
  * create_tables() parses the env- and arg-strings in new user
  * memory and creates the pointer tables from them, and puts their

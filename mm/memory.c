@@ -48,6 +48,7 @@ __asm__("movl %%eax,%%cr3"::"a" (0))
 current->start_code + current->end_code)
 
 static long HIGH_MEMORY = 0;
+static long total_pages = 0;
 
 /* chenwg
  * 复制一页4KB的内存
@@ -612,6 +613,12 @@ void do_no_page(unsigned long error_code,unsigned long address)
 	free_page(page);
 	oom();
 }
+
+long get_total_pages(void)
+{
+	return total_pages;
+}
+
 /*******************************************************************************
 	start_mem用作分页的物理内存的起始地址
 	end_mem 实际物理内存的最大地址
@@ -647,6 +654,7 @@ void mem_init(long start_mem, long end_mem)
 	i = MAP_NR(start_mem);
 	end_mem -= start_mem;
 	end_mem >>= 12;
+	total_pages= end_mem;
 	while (end_mem-->0)
 		mem_map[i++]=0;
 }

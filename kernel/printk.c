@@ -13,18 +13,32 @@
 #include <stddef.h>
 
 #include <linux/kernel.h>
+#include <linux/sched.h>
 
 static char buf[1024];
 
 extern int vsprintf(char * buf, const char * fmt, va_list args);
 
+static inline int timestamp(const char *fmt, ...)
+{
+	va_list args;
+	int i;
+	
+	va_start(args, fmt);
+	i = vsprintf(buf, fmt, args);
+	va_end(args);
+	return i;
+}
+
 int printk(const char *fmt, ...)
 {
 	va_list args;
 	int i;
-
+	int j;
+	
 	va_start(args, fmt);
-	i=vsprintf(buf,fmt,args);
+	j=timestamp("[%012d] ", jiffies);
+	i=vsprintf(buf+j,fmt,args) + j;
 	va_end(args);
 	__asm__("push %%fs\n\t"
 		"push %%ds\n\t"

@@ -51,6 +51,7 @@ extern void chr_dev_init(void);
 extern void hd_init(void);
 extern void floppy_init(void);
 extern void mem_init(long start, long end);
+extern long get_total_pages(void);
 extern long rd_init(long mem_start, int length);
 extern long kernel_mktime(struct tm * tm);
 extern long startup_time;
@@ -153,9 +154,13 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	blk_dev_init();
 	chr_dev_init();
 	tty_init();
-	printk("a is %d, b is %d, c is %d\n", __a, __b, __c);
-	printk("mem_start is %dMB, mem_end is %dMB\n", 
-		main_memory_start/(1024*1024), memory_end/(1024*1024));
+	printk("params a %d b %d c %d\n", __a, __b, __c);
+	printk("mem_start is %dMB\n", main_memory_start/(1024*1024));
+	printk("men_end is %dMB\n", memory_end/(1024*1024));
+	printk("system has %d pages\n", get_total_pages());
+#ifdef RAMDISK_SIZE
+	printk("ramdisk size is %dMB", RAMDISK_SIZE/1024);
+#endif
 	printk("kernel time init\n");
 	time_init();
 	printk("kernel sched init\n");
@@ -167,57 +172,62 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	printk("kernel fp init\n");
 	floppy_init();
 	printk("kernel move to user\n");
-/*******************************************************************************
-	sti允许中断
-*******************************************************************************/	
+	/*
+	 * sti允许中断
+	 *
+	 */	
 	sti();
-/*
-	执行完move_to_user_mode函数后，程序会手工切到task0执行，测代码段和数据段
-	和内核一致，堆栈也使用了内核堆栈，运行权限变成3, 因此我们可以看出Linux中
-	使用0和3权限
-	具体可以查看move_to_user_mode分析
- */
+	/*
+	 执行完move_to_user_mode函数后，程序会手工切到task0执行，测代码段和数据段
+	 和内核一致，堆栈也使用了内核堆栈，运行权限变成3, 因此我们可以看出Linux中
+	 使用0和3权限
+	 具体可以查看move_to_user_mode分析
+ 	*/
 	move_to_user_mode();
 
-/*	fork程序是一个系统调用，使用_syscall0进程展开生成，0表示没有参数
-
-	#define _syscall0(type,name) \
-		type name(void) \
-		{ \
-		long __res; \
-		__asm__ volatile ("int $0x80" \
-		 : "=a" (__res) \
-		 : "0" (__NR_##name)); \
-		if (__res >= 0) \
-		 return (type) __res; \
-		errno = -__res; \
-		return -1; \
-
-	根据前面的定义static inline _syscall0(int,fork) 展开
-
-	int fork() {
-		register eax __ret;
-		eax= __NR_fork;
-		int 0x80
-		if (eax >= 0)
-			return int __res;
-		error = - __res
-		return -1
-	}
-	INT 0x80是软中断函数，其调用流程为:
-	CPU通过中断向量0x80找到对应的描述符，此描述符包含了段选择子和偏移地址已经DPL
-	CPU检查当前的DPL是否小于描述符的DPL
-	CPU会从当前TSS段中找到中断处理程序的栈选择子和栈指针作为新的栈地址(tss.ss0, tss.esp0)
-	如果DPL发生变化则将当前的SS, ESP, EFLAGS, CS, EIP压入新的栈中
-	如果DPL没有发生变化则将EFLAGS, CS, EIP压如新的栈中
-	CPU从中断描述符中取CS:EIP作为新的运行地址
-
-	fork执行完毕后是进程1，此时进程0和进程1使用相同的用户空间栈，为了进程之间互不影响因此
-	暂时不使用栈，函数以内联的形式进行调用，试想一下
-	如果以函数调用的形成当fork时发生切换，系统将当前的SS, SP压栈，此时pause进程也将SS, SP压栈
-	pause的堆栈数据会覆盖fork的堆栈数据，使fork函数返回到pause函数这里，从而init不能执行
-	同理，也可能导致pause进程执行到init程序里
- */
+	/*	
+     fork程序是一个系统调用，使用_syscall0进程展开生成，0表示没有参数
+     
+     #define _syscall0(type,name) \
+     	type name(void) \
+     	{ \
+     	long __res; \
+     	__asm__ volatile ("int $0x80" \
+     	 : "=a" (__res) \
+     	 : "0" (__NR_##name)); \
+     	if (__res >= 0) \
+     	 return (type) __res; \
+     	errno = -__res; \
+     	return -1; \
+     
+     根据前面的定义static inline _syscall0(int,fork) 展开
+     
+     int fork() {
+     	register eax __ret;
+     	eax= __NR_fork;
+     	int 0x80
+     	if (eax >= 0)
+     		return int __res;
+     	error = - __res
+     	return -1
+     }
+     INT 0x80是软中断函数，其调用流程为:
+     CPU通过中断向量0x80找到对应的描述符，此描述符包含了段选择子和偏移地址已经DPL
+     CPU检查当前的DPL是否小于描述符的DPL
+     CPU会从当前TSS段中找到中断处理程序的栈选择子和栈指针作为新的栈地址(tss.ss0, tss.esp0)
+     如果DPL发生变化则将当前的SS, ESP, EFLAGS, CS, EIP压入新的栈中
+     如果DPL没有发生变化则将EFLAGS, CS, EIP压如新的栈中
+     CPU从中断描述符中取CS:EIP作为新的运行地址
+     
+     fork执行完毕后是进程1，此时进程0和进程1使用相同的用户空间栈，
+     为了进程之间互不影响因此
+     暂时不使用栈，函数以内联的形式进行调用，试想一下
+     如果以函数调用的形成当fork时发生切换，系统将当前的SS, SP压栈，
+     此时pause进程也将SS, SP压栈
+     pause的堆栈数据会覆盖fork的堆栈数据，使fork函数返回到pause函数这里，
+     从而init不能执行
+     同理，也可能导致pause进程执行到init程序里
+	*/
 	if (!fork()) {		/* we count on this going ok */
 		init();
 	}

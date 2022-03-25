@@ -129,6 +129,24 @@
 #define __NR_ssetmask	69
 #define __NR_setreuid	70
 #define __NR_setregid	71
+#define __NR_sigsuspend 72
+/*
+ * add Linux0.12 system call
+ */
+#define __NR_sigpending 73
+#define __NR_sethostname 74
+#define __NR_setrlimit 75
+#define __NR_getrlimit 76
+#define __NR_getrusage 77
+#define __NR_gettimeofday 78
+#define __NR_settimeofday 79
+#define __NR_getgroups 80
+#define __NR_setgroups 81
+#define __NR_select 82
+#define __NR_symlink 83
+#define __NR_lstat 84
+#define __NR_readlink 85
+#define __NR_uselib 86
 
 #define _syscall0(type,name) \
   type name(void) \
