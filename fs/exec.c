@@ -77,9 +77,20 @@ static int count(char ** argv)
 	int i=0;
 	char ** tmp;
 
-	if ((tmp = argv))
+	if ((tmp = argv)) {
+
+		/* 
+		 * argv的格式为
+		 * static char * argv[] = { "-/bin/sh",NULL };
+		 * argv为数组的地址
+		 * 所以这个意思是
+		 * 从fs:argv取数据作为地址，如果不为NULL则计数++
+		 *
+		 *
+		 */
 		while (get_fs_long((unsigned long *) (tmp++)))
 			i++;
+	}
 
 	return i;
 }
@@ -110,21 +121,45 @@ static unsigned long copy_strings(int argc,char ** argv,unsigned long *page,
 
 	if (!p)
 		return 0;	/* bullet-proofing */
+
+	/* ds内核空间 new_fs
+	 * fs用户空间 old_fs
+	 *
+	 */
 	new_fs = get_ds();
 	old_fs = get_fs();
+
+
+	/* 如果是从内核拷贝到内核空间，设置fs为内核数据段选择子
+	 * 在这里我们分析可以只考虑from_kmem = 0的情况，
+	 *
+	 */
 	if (from_kmem==2)
 		set_fs(new_fs);
+		
 	while (argc-- > 0) {
 		if (from_kmem == 1)
 			set_fs(new_fs);
+		/*
+		 * 我们可以看到这句话是获取最后一个参数的起始地址
+		 */
 		if (!(tmp = (char *)get_fs_long(((unsigned long *)argv)+argc)))
 			panic("argc is wrong");
 		if (from_kmem == 1)
 			set_fs(old_fs);
 		len=0;		/* remember zero-padding */
+		/*
+		 * 获取参数字符串的长度
+		 *
+		 */
 		do {
 			len++;
 		} while (get_fs_byte(tmp++));
+		/* p为128KB -4 如果长度大于128KB - 4 则返回，
+		 * 根据注释，我们最多拷贝128KB-4长度的参数
+		 *
+		 *
+		 */
 		if (p-len < 0) {	/* this shouldn't happen - 128kB */
 			set_fs(old_fs);
 			return 0;
@@ -156,23 +191,48 @@ static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 	unsigned long code_limit,data_limit,code_base,data_base;
 	int i;
 
+	/* code_limit不够一页则占一页
+	 *
+	 */
 	code_limit = text_size+PAGE_SIZE -1;
 	code_limit &= 0xFFFFF000;
 	data_limit = 0x4000000;
+	/* 获取当前程序的基地址，并设置数据和代码的基地址一样
+	 *
+	 */
 	code_base = get_base(current->ldt[1]);
 	data_base = code_base;
+
+	/* 基地址和execv执行前一样，但是limit变成了新的程序的大小
+	 *
+	 */
 	set_base(current->ldt[1],code_base);
 	set_limit(current->ldt[1],code_limit);
 	set_base(current->ldt[2],data_base);
 	set_limit(current->ldt[2],data_limit);
+	
 /* make sure fs points to the NEW data segment */
 	__asm__("pushl $0x17\n\tpop %%fs"::);
+
+	/* 指向64MB的最后一个字节
+	 *
+	 */
 	data_base += data_limit;
+	
 	for (i=MAX_ARG_PAGES-1 ; i>=0 ; i--) {
+		/*
+		 * data_base 64MB的地址第一个页
+		 */
 		data_base -= PAGE_SIZE;
+		/* 如果page[i]有效，也就是参数有效
+		 * 则将此物理页映射到data_base地址处
+		 */
 		if (page[i])
 			put_page(page[i],data_base);
 	}
+	/*
+	 * 返回64M
+	 */
 	return data_limit;
 }
 
@@ -193,21 +253,21 @@ int do_execve(unsigned long * eip,long tmp,char * filename,
 	unsigned long p=PAGE_SIZE*MAX_ARG_PAGES-4;
 
 	/* 
-	 * eip[i]��ʾջ�з��ص�cs��ַ
-	 * ���е�ѡ���Ӳ���Ϊ�ں�ѡ���ӣ�Ҳ����˵�ں˳����ܵ��ô˺���
+	 * eip[i]表示栈中返回的cs地址
+	 * 其中的选择子不能为内核选择子，也就是说内核程序不能调用此函数
 	 *
 	 */
 	if ((0xffff & eip[1]) != 0x000f)
 		panic("execve called from supervisor mode");
 
 	/* 
-	 * ��ʼ�������ͻ�����ҳ��
+	 * 初始化参数和环境的页表
 	 *
 	 */
 	for (i=0 ; i<MAX_ARG_PAGES ; i++)	/* clear page-table */
 		page[i]=0;
 	/*
-	 * ��ȡ��ִ���ļ��Ķ�Ӧ��inode 
+	 * 获取可执行文件的对应的inode 
 	 *
 	 */
 	if (!(inode=namei(filename)))		/* get executables inode */
@@ -221,13 +281,13 @@ int do_execve(unsigned long * eip,long tmp,char * filename,
 	
 restart_interp:
 	/*
-	 * ������һ�������ļ�
+	 * 必须是一个常规文件
 	 */
 	if (!S_ISREG(inode->i_mode)) {	/* must be regular file */
 		retval = -EACCES;
 		goto exec_error2;
 	}
-	/* Ȩ�޼��
+	/* 权限检查
 	 *
 	 */
 	i = inode->i_mode;
@@ -243,19 +303,19 @@ restart_interp:
 		goto exec_error2;
 	}
 	/*
-	 * ��ȡһ������
+	 * 读取一块数据
 	 */
 	if (!(bh = bread(inode->i_dev,inode->i_zone[0]))) {
 		retval = -EACCES;
 		goto exec_error2;
 	}
 	/*
-	 * ��ȡ�ļ�ͷ��
+	 * 获取文件头部
 	 */
 	ex = *((struct exec *) bh->b_data);	/* read exec-header */
 
 	/*
-	 * ����ǽű���ִ�нű�
+	 * 如果是脚本则执行脚本
 	 */
 	if ((bh->b_data[0] == '#') && (bh->b_data[1] == '!') && (!sh_bang)) {
 		/*
@@ -366,6 +426,11 @@ restart_interp:
 	if (last_task_used_math == current)
 		last_task_used_math = NULL;
 	current->used_math = 0;
+	/* change_ldt将参数映射到了顶端并返回64MB的地址
+	 * 然后减去MAX_ARG_PAGES*PAGE_SIZE将地址修改为参数的最开始，然后在加上偏移p
+	 * 此时p的值在64MB的参数处
+	 *
+	 */
 	p += change_ldt(ex.a_text,page)-MAX_ARG_PAGES*PAGE_SIZE;
 	p = (unsigned long) create_tables((char *)p,argc,envc);
 	current->brk = ex.a_bss +
