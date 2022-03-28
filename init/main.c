@@ -27,6 +27,7 @@ static inline _syscall0(int,fork)
 static inline _syscall0(int,pause)
 static inline _syscall1(int,setup,void *,BIOS)
 static inline _syscall0(int,sync)
+static inline _syscall0(int,getpid)
 
 #include <linux/tty.h>
 #include <linux/sched.h>
@@ -266,10 +267,13 @@ void init(void)
 	(void) open("/dev/tty0",O_RDWR,0);
 	(void) dup(0);
 	(void) dup(0);
+	printf("init current pid is %d\n", getpid());
 	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
 		NR_BUFFERS*BLOCK_SIZE);
 	printf("Free mem: %d bytes\n\r",memory_end-main_memory_start);
+
 	if (!(pid=fork())) {
+		printf("init fork current pid is %d\n", getpid());
 		close(0);
 		if (open("/etc/rc",O_RDONLY,0))
 			_exit(1);
@@ -278,13 +282,17 @@ void init(void)
 	}
 	if (pid>0)
 		while (pid != wait(&i))
+
 			/* nothing */;
 	while (1) {
+		printf("start enter init while(1)\n");
 		if ((pid=fork())<0) {
+			printf("init while(1) pid is %d\n", getpid());
 			printf("Fork failed in init\r\n");
 			continue;
 		}
 		if (!pid) {
+			printf("while1 fork current pid is %d\n", getpid());
 			close(0);close(1);close(2);
 			setsid();
 			(void) open("/dev/tty0",O_RDWR,0);

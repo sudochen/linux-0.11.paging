@@ -80,11 +80,10 @@ clean:
 	$(Q)rm -f kernel.elf boot/*.o  typescript* info bochsout.txt
 	$(Q)for i in init mm fs kernel lib boot; do (cd $$i; make $(S) clean); done
 
+#QEMU_OPS:= -nographic -serial mon:stdio -m 64M -boot a
+QEMU_OPS:= -m 64M -boot a
 qemu:
-	qemu-system-i386 -m 64M -boot a -fda Image  -hda ./rootfs/hdc-0.11.img 
-
-qemuf:
-	qemu-system-i386 -m 64M -boot a -fda Image  -fdb ./rootfs/rootimage-0.11
+	qemu-system-i386 ${QEMU_OPS} -fda Image  -hda ./rootfs/hdc-0.11.img 
 
 bochs:
 	bochs -f bochsrc
