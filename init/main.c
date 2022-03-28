@@ -158,7 +158,7 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	printk("params a %d b %d c %d\n", __a, __b, __c);
 	printk("mem_start is %dMB\n", main_memory_start/(1024*1024));
 	printk("men_end is %dMB\n", memory_end/(1024*1024));
-	printk("system has %d pages omg\n", get_total_pages());
+	printk("system has %d pages omg xxx\n", get_total_pages());
 #ifdef RAMDISK_SIZE
 	printk("ramdisk size is %dMB", RAMDISK_SIZE/1024);
 #endif
