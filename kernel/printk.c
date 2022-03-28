@@ -37,7 +37,7 @@ int printk(const char *fmt, ...)
 	int j;
 	
 	va_start(args, fmt);
-	j=timestamp("[%012d] ", jiffies);
+	j=timestamp("[%010d] ", jiffies);
 	i=vsprintf(buf+j,fmt,args) + j;
 	va_end(args);
 	__asm__("push %%fs\n\t"

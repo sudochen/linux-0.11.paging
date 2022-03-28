@@ -227,7 +227,7 @@ void _exit(int status);
 //volatile void _exit(int status);
 int fcntl(int fildes, int cmd, ...);
 static int fork(void);
-int getpid(void);
+//int getpid(void);
 int getuid(void);
 int geteuid(void);
 int getgid(void);
