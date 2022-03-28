@@ -108,6 +108,7 @@ check_x87:
  *  written by the page tables.
  */
 /* 
+ *
  *　setup_idt会将256个中断向量设置为ignore_int， lea执行为取有效地址指令
  *
  */
