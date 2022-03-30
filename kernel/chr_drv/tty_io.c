@@ -66,7 +66,7 @@ struct tty_struct tty_table[] = {
 		{0, /* no translation */
 		0,  /* no translation */
 		B2400 | CS8,
-		ECHO,
+		0,
 		0,
 		INIT_C_CC},
 		0,
@@ -79,7 +79,7 @@ struct tty_struct tty_table[] = {
 		{0, /* no translation */
 		0,  /* no translation */
 		B2400 | CS8,
-		ECHO,
+		0,
 		0,
 		INIT_C_CC},
 		0,
