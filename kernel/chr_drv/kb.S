@@ -65,7 +65,7 @@ e0_e1:	inb $0x61,%al
 	outb %al,$0x61
 	movb $0x20,%al
 	outb %al,$0x20
-	pushl $1
+	pushl $0
 	call do_tty_interrupt
 	addl $4,%esp
 	pop %es

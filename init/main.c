@@ -158,7 +158,7 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	printk("params a %d b %d c %d\n", __a, __b, __c);
 	printk("mem_start is %dMB\n", main_memory_start/(1024*1024));
 	printk("men_end is %dMB\n", memory_end/(1024*1024));
-	printk("system has %d pages omg xxx\n", get_total_pages());
+	printk("system has %d pages omg\n", get_total_pages());
 #ifdef RAMDISK_SIZE
 	printk("ramdisk size is %dMB", RAMDISK_SIZE/1024);
 #endif
@@ -264,7 +264,7 @@ void init(void)
 	int pid,i;
 
 	setup((void *) &drive_info);
-	(void) open("/dev/tty1",O_RDWR,0);
+	(void) open("/dev/tty0",O_RDWR,0);
 	(void) dup(0);
 	(void) dup(0);
 	printf("init current pid is %d\n", getpid());
@@ -295,7 +295,7 @@ void init(void)
 			printf("while1 fork current pid is %d\n", getpid());
 			close(0);close(1);close(2);
 			setsid();
-			(void) open("/dev/tty1",O_RDWR,0);
+			(void) open("/dev/tty0",O_RDWR,0);
 			(void) dup(0);
 			(void) dup(0);
 			_exit(execve("/bin/sh",argv,envp));
