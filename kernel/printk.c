@@ -30,11 +30,35 @@ static inline int timestamp(const char *fmt, ...)
 	return i;
 }
 
+int printk_s(const char *fmt, ...)
+{
+	va_list args;
+	int i;
+	int j = 0;
+	
+	va_start(args, fmt);
+	i=vsprintf(buf+j,fmt,args) + j;
+	va_end(args);
+	__asm__("push %%fs\n\t"
+		"push %%ds\n\t"
+		"pop %%fs\n\t"
+		"pushl %0\n\t"
+		"pushl $buf\n\t"
+		"pushl $1\n\t"
+		"call tty_write\n\t"
+		"addl $8,%%esp\n\t"
+		"popl %0\n\t"
+		"pop %%fs"
+		::"r" (i):"ax","cx","dx");
+	return i;
+
+}
+
 int printk(const char *fmt, ...)
 {
 	va_list args;
 	int i;
-	int j;
+	int j = 0;
 	
 	va_start(args, fmt);
 	j=timestamp("[%010d] ", jiffies);
@@ -45,7 +69,7 @@ int printk(const char *fmt, ...)
 		"pop %%fs\n\t"
 		"pushl %0\n\t"
 		"pushl $buf\n\t"
-		"pushl $0\n\t"
+		"pushl $1\n\t"
 		"call tty_write\n\t"
 		"addl $8,%%esp\n\t"
 		"popl %0\n\t"

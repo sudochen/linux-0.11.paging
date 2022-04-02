@@ -20,7 +20,7 @@ DRIVERS =kernel/blk_drv/blk_drv.a kernel/chr_drv/chr_drv.a
 MATH	=kernel/math/math.a
 LIBS	=lib/lib.a
 
-all: clean Image
+all: Image
 Image: boot/bootsect boot/setup kernel.bin FORCE
 	$(BUILD) boot/bootsect boot/setup kernel.bin Image
 	$(Q)rm -f kernel.bin
@@ -82,8 +82,8 @@ clean:
 
 run: qemu
 
-#QEMU_OPS:= -nographic -serial mon:stdio -m 64M -boot a
-QEMU_OPS:= -m 64M -boot a
+QEMU_OPS:= -nographic -serial mon:stdio -m 64M -boot a
+#QEMU_OPS:= -m 64M -boot a
 qemu:
 	qemu-system-i386 ${QEMU_OPS} -fda Image  -hda ./rootfs/hdc-0.11.img 
 
