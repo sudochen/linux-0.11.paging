@@ -26,8 +26,10 @@
 #define NULL ((void *) 0)
 #endif
 
-extern int copy_page_tables(unsigned long from, unsigned long to, long size);
-extern int free_page_tables(unsigned long from, unsigned long size);
+extern int copy_page_tables(struct task_struct *tsk);
+extern int free_page_tables(struct task_struct *tsk);
+extern void clear_page_tables(struct task_struct * tsk);
+extern void show_mem(void);
 
 extern void sched_init(void);
 extern void schedule(void);
@@ -125,8 +127,8 @@ struct task_struct {
 /* filp */	{NULL,}, \
 	{ \
 		{0,0}, \
-/* ldt */	{0x9f,0xc0fa00}, \
-		{0x9f,0xc0f200}, \
+/* ldt */		{0xfff,0xc0c0fa00}, \
+		{0xfff,0xc0c0f200} \
 	}, \
 /*tss*/	{0,PAGE_SIZE+(long)&init_task,0x10,0,0,0,0,(long)&pg_dir,\
 	 0,0,0,0,0,0,0,0, \
@@ -181,7 +183,7 @@ __asm__("str %%ax\n\t" \
  * This also clears the TS-flag if the task we switched to has used
  * tha math co-processor latest.
  */
-//#define CONFIG_TASK_TSS 1
+#define CONFIG_TASK_TSS 1
 #ifdef CONFIG_TASK_TSS
 #define switch_to(n) {\
 struct {long a,b;} __tmp; \

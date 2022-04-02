@@ -173,6 +173,7 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	printk("kernel fp init\n");
 	floppy_init();
 	printk("kernel move to user\n");
+	show_mem();
 	/*
 	 * sti允许中断
 	 *
@@ -262,43 +263,74 @@ static char * envp[] = { "HOME=/usr/root", NULL };
 void init(void)
 {
 	int pid,i;
+	int j = 0;
 
 	setup((void *) &drive_info);
-	(void) open("/dev/tty0",O_RDWR,0);
+	(void) open("/dev/tty1",O_RDWR,0);
 	(void) dup(0);
 	(void) dup(0);
-	printf("init current pid is %d\n", getpid());
 	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
 		NR_BUFFERS*BLOCK_SIZE);
 	printf("Free mem: %d bytes\n\r",memory_end-main_memory_start);
-
+	
+#if 0
 	if (!(pid=fork())) {
-		printf("init fork current pid is %d\n", getpid());
+		printf("%s-%d this is task %d\n", __func__, __LINE__, getpid());
 		close(0);
 		if (open("/etc/rc",O_RDONLY,0))
 			_exit(1);
 		execve("/bin/sh",argv_rc,envp_rc);
 		_exit(2);
 	}
-	if (pid>0)
-		while (pid != wait(&i))
+	printf("%s-%d this is task %d\n", __func__, __LINE__, getpid());
+	if (pid>0) {
+		while (pid != wait(&i));
+	}
+#endif
+#if 0
+	printf("%s-%d this is task %d\n", __func__, __LINE__, getpid());
 
-			/* nothing */;
+	pid = fork();
+	if (pid < 0) {
+		printf("fork failed\n");
+		return;
+	}
+
+	if (!pid) {
+		printf("this is a test pid %d\n", getpid());
+		_exit(2);
+	}
+
+	if (pid > 0) {
+		int j = wait(&i);
+		printf("jjjjjjjjjjjjjjjjjj is %d\n", j);
+		
+	}
+#endif
+	/* nothing */;
 	while (1) {
-		printf("start enter init while(1)\n");
 		if ((pid=fork())<0) {
-			printf("init while(1) pid is %d\n", getpid());
 			printf("Fork failed in init\r\n");
 			continue;
 		}
 		if (!pid) {
-			printf("while1 fork current pid is %d\n", getpid());
+			printf("%s-%d this is task %d\n", __func__, __LINE__, getpid());
 			close(0);close(1);close(2);
 			setsid();
-			(void) open("/dev/tty0",O_RDWR,0);
+			(void) open("/dev/tty1",O_RDWR,0);
 			(void) dup(0);
 			(void) dup(0);
-			_exit(execve("/bin/sh",argv,envp));
+			int t = execve("/bin/sh",argv,envp);
+			printf("dddddddddddddddddddd\n");
+			printf("dddddddddddddddddddd\n");
+			printf("dddddddddddddddddddd\n");
+			printf("dddddddddddddddddddd\n");
+			printf("dddddddddddddddddddd\n");
+			printf("dddddddddddddddddddd\n");
+			printf("dddddddddddddddddddd\n");
+			printf("dddddddddddddddddddd\n");
+			printf("dddddddddddddddddddd\n");
+			_exit(t);
 		}
 		while (1)
 			if (pid == wait(&i))
@@ -306,5 +338,7 @@ void init(void)
 		printf("\n\rchild %d died with code %04x\n\r",pid,i);
 		sync();
 	}
+	printf("DDDDDDDDDDDDDD\n");
 	_exit(0);	/* NOTE! _exit, not exit() */
 }
+

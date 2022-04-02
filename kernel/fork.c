@@ -42,39 +42,26 @@ int copy_mem(int nr,struct task_struct * p)
 	unsigned long old_data_base,new_data_base,data_limit;
 	unsigned long old_code_base,new_code_base,code_limit;
 
-	/*
-	 * 读取系统当前的局部描述符的代码段长度和数据段长度
-	 */
-	code_limit=get_limit(0x0f);	
-	data_limit=get_limit(0x17);
-
-	/*
-	 * 读取当前进程的局部描述符的代码段长度和数据段长度
-	 */
+	code_limit = get_limit(0x0f);
+	data_limit = get_limit(0x17);
 	old_code_base = get_base(current->ldt[1]);
 	old_data_base = get_base(current->ldt[2]);
-	/*
-	 * 我们知道代码段和数据段的基地址是一样的
-	 *
-	 */
-	if (old_data_base != old_code_base)
+	if (old_data_base != old_code_base) {
+		printk("ldt[0]: %08x %08x\n",current->ldt[0].a,current->ldt[0].b);
+		printk("ldt[1]: %08x %08x\n",current->ldt[1].a,current->ldt[1].b);
+		printk("ldt[2]: %08x %08x\n",current->ldt[2].a,current->ldt[2].b);
 		panic("We don't support separate I&D");
-	/*
-	 * 如果数据段的长度小于代码段的长度也不行
-	 */
+	}
 	if (data_limit < code_limit)
 		panic("Bad data_limit");
-	new_data_base = new_code_base = nr * 0x4000000;
+	new_data_base = old_data_base;
+	new_code_base = old_code_base;
 	p->start_code = new_code_base;
 	set_base(p->ldt[1],new_code_base);
 	set_base(p->ldt[2],new_data_base);
-	if (copy_page_tables(old_data_base,new_data_base,data_limit)) {
-		printk("free_page_tables: from copy_mem\n");
-		free_page_tables(new_data_base,data_limit);
-		return -ENOMEM;
-	}
-	return 0;
+	return copy_page_tables(p);
 }
+
 
 extern void first_return_from_kernel(void);
 
@@ -99,6 +86,8 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	if (!p)
 		return -EAGAIN;
 	task[nr] = p;
+
+	
 
 	// NOTE!: the following statement now work with gcc 4.3.2 now, and you
 	// must compile _THIS_ memcpy without no -O of gcc.#ifndef GCC4_3
@@ -169,6 +158,7 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	
 #endif
 
+
 	if (last_task_used_math == current)
 		__asm__("clts ; fnsave %0"::"m" (p->tss.i387));
 	if (copy_mem(nr,p)) {
@@ -185,9 +175,13 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 		current->root->i_count++;
 	if (current->executable)
 		current->executable->i_count++;
+
 	set_tss_desc(gdt+(nr<<1)+FIRST_TSS_ENTRY,&(p->tss));
 	set_ldt_desc(gdt+(nr<<1)+FIRST_LDT_ENTRY,&(p->ldt));
 	p->state = TASK_RUNNING;	/* do this last, just in case */
+#ifdef K_DEBUG
+	printk("%s-%d set task %d state to running father %d\n", __func__, __LINE__, p->pid, p->father);
+#endif
 	return last_pid;
 }
 

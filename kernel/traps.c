@@ -36,6 +36,22 @@ register unsigned short __res; \
 __asm__("mov %%fs,%%ax":"=a" (__res):); \
 __res;})
 
+#define _ss() ({ \
+	register unsigned short __res; \
+	__asm__("mov %%ss,%%ax":"=a" (__res):); \
+	__res;})
+	
+#define _cs() ({ \
+	register unsigned short __res; \
+	__asm__("mov %%cs,%%ax":"=a" (__res):); \
+	__res;})
+	
+#define _ds() ({ \
+		register unsigned short __res; \
+		__asm__("mov %%ds,%%ax":"=a" (__res):); \
+		__res;})
+
+
 int do_exit(long code);
 
 void page_exception(void);
@@ -65,11 +81,16 @@ static void die(char * str,long esp_ptr,long nr)
 	long * esp = (long *) esp_ptr;
 	int i;
 
+	printk("esp is %p %p %p %p %p %p\n", esp, esp[0], esp[1], esp[2], esp[3], esp[4]);
 	printk("%s: %04x\n\r",str,nr&0xffff);
 	printk("EIP:\t%04x:%p\nEFLAGS:\t%p\nESP:\t%04x:%p\n",
 		esp[1],esp[0],esp[2],esp[4],esp[3]);
 	printk("fs: %04x\n",_fs());
-	printk("base: %p, limit: %p\n",get_base(current->ldt[1]),get_limit(0x17));
+	printk("ss: %04x\n",_ss());
+	printk("cs: %04x\n",_cs());
+	printk("ds: %04x\n",_ds());
+	printk("base: %p, limit: %p\n",get_base(current->ldt[1]),get_limit(0x0f));
+	printk("data: %p, limit: %p\n",get_base(current->ldt[2]),get_limit(0x17));
 	if (esp[4] == 0x17) {
 		printk("Stack: ");
 		for (i=0;i<4;i++)

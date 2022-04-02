@@ -191,32 +191,27 @@ static unsigned long copy_strings(int argc,char ** argv,unsigned long *page,
 	return p;
 }
 
+#define TASK_SIZE	(0xC0000000)
+
 static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 {
 	unsigned long code_limit,data_limit,code_base,data_base;
 	int i;
-
-	/* code_limit不够一页则占一页
-	 *
-	 */
-	code_limit = text_size+PAGE_SIZE -1;
-	code_limit &= 0xFFFFF000;
-	data_limit = 0x4000000;
-	/* 获取当前程序的基地址，并设置数据和代码的基地址一样
-	 *
-	 */
-	code_base = get_base(current->ldt[1]);
-	data_base = code_base;
-
-	/* 基地址和execv执行前一样，但是limit变成了新的程序的大小
-	 *
-	 */
+	
+	code_limit = TASK_SIZE;
+	data_limit = TASK_SIZE;
+	code_base = data_base = 0;
+	current->start_code = code_base;
+#ifdef K_DEBUG
+	printk("%s-%d code base %p code limit %p\n", __func__, __LINE__, code_base, code_limit);
+#endif
 	set_base(current->ldt[1],code_base);
 	set_limit(current->ldt[1],code_limit);
 	set_base(current->ldt[2],data_base);
 	set_limit(current->ldt[2],data_limit);
+
 	
-/* make sure fs points to the NEW data segment */
+	/* make sure fs points to the NEW data segment */
 	__asm__("pushl $0x17\n\tpop %%fs"::);
 
 	/* 指向64MB的最后一个字节
@@ -225,15 +220,21 @@ static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 	data_base += data_limit;
 	
 	for (i=MAX_ARG_PAGES-1 ; i>=0 ; i--) {
+		
 		/*
 		 * data_base 64MB的地址第一个页
 		 */
 		data_base -= PAGE_SIZE;
+
 		/* 如果page[i]有效，也就是参数有效
 		 * 则将此物理页映射到data_base地址处
 		 */
-		if (page[i])
-			put_page(page[i],data_base);
+		if (page[i]) {
+#ifdef K_DEBUG
+			printk("%s-%d put_page %p to %p\n", __func__, __LINE__, page[i], data_base);
+#endif
+			put_page(page[i], data_base);
+		}
 	}
 	/*
 	 * 返回64M
@@ -402,7 +403,6 @@ restart_interp:
 		goto exec_error2;
 	}
 	if (N_TXTOFF(ex) != BLOCK_SIZE) {
-		printk("%s: N_TXTOFF != BLOCK_SIZE. See a.out.h.", filename);
 		retval = -ENOEXEC;
 		goto exec_error2;
 	}
@@ -426,8 +426,7 @@ restart_interp:
 		if ((current->close_on_exec>>i)&1)
 			sys_close(i);
 	current->close_on_exec = 0;
-	free_page_tables(get_base(current->ldt[1]),get_limit(0x0f));
-	free_page_tables(get_base(current->ldt[2]),get_limit(0x17));
+	clear_page_tables(current);
 	if (last_task_used_math == current)
 		last_task_used_math = NULL;
 	current->used_math = 0;
@@ -441,6 +440,10 @@ restart_interp:
 	current->brk = ex.a_bss +
 		(current->end_data = ex.a_data +
 		(current->end_code = ex.a_text));
+#ifdef K_DEBUG
+	printk("%s-%d end_code is %x, end_data is %x ex.a_entry %x\n", 
+		__func__, __LINE__, current->end_code, current->end_data, ex.a_entry);
+#endif
 	current->start_stack = p & 0xfffff000;
 	current->euid = e_uid;
 	current->egid = e_gid;

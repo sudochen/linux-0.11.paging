@@ -102,8 +102,8 @@ static void tell_father(int pid)
 int do_exit(long code)
 {
 	int i;
-	free_page_tables(get_base(current->ldt[1]),get_limit(0x0f));
-	free_page_tables(get_base(current->ldt[2]),get_limit(0x17));
+
+	free_page_tables(current);
 	for (i=0 ; i<NR_TASKS ; i++)
 		if (task[i] && task[i]->father == current->pid) {
 			task[i]->father = 1;
@@ -128,7 +128,13 @@ int do_exit(long code)
 		kill_session();
 	current->state = TASK_ZOMBIE;
 	current->exit_code = code;
+#ifdef K_DEBUG
+	printk("%s-%d state is %d code is %d  current %d father %d start\n", __func__, __LINE__, current->state, code, current->pid, current->father);
+#endif
 	tell_father(current->father);
+#ifdef K_DEBUG
+	printk("%s-%d state is %d code is %d  current %d father %d end\n", __func__, __LINE__, current->state, code, current->pid, current->father);
+#endif
 	schedule();
 	return (-1);	/* just to suppress warnings */
 }
@@ -142,7 +148,9 @@ int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options)
 {
 	int flag, code;
 	struct task_struct ** p;
-
+#ifdef K_DEBUG
+	printk("%s-%d syswaitpid %d\n", __func__, __LINE__, current->pid);
+#endif
 	verify_area(stat_addr,4);
 repeat:
 	flag=0;
@@ -185,8 +193,9 @@ repeat:
 			return 0;
 		current->state=TASK_INTERRUPTIBLE;
 		schedule();
-		if (!(current->signal &= ~(1<<(SIGCHLD-1))))
+		if (!(current->signal &= ~(1<<(SIGCHLD-1)))) {
 			goto repeat;
+		}
 		else
 			return -EINTR;
 	}
