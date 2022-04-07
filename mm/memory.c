@@ -113,7 +113,7 @@ void free_page(unsigned long addr)
 	i = MAP_NR(addr);
 
 	if (mem_map[i] & USED) {
-		printk("system reserve mem, ignore free\n");
+		//printk("system reserve mem, ignore free\n");
 		return;
 	}
 
@@ -211,6 +211,7 @@ int free_page_tables(struct task_struct * tsk)
 	page_dir = (unsigned long *) pg_dir;
 	for (i = 0 ; i < 1024 ; i++,page_dir++)
 		free_one_table(page_dir);
+	*page_dir = 0;
 	free_page(pg_dir);
 	invalidate();
 	return 0;
@@ -255,16 +256,15 @@ int copy_page_tables(struct task_struct * tsk)
 			*old_page_dir = 0;
 			continue;
 		}
-		if (mem_map[MAP_NR(old_pg_table)] & USED) {
-#ifdef K_DEBUG
-			printk("%s-%d i %d new_page_dir is %p old_pg_table is %p kernel reserve\n", __func__, __LINE__, i, new_page_dir, old_pg_table);
-#endif
+
+		/* 如果是内核空间复用页表节省内存，否则创建自己的进程空间页表
+		 *
+		 */
+		if (mem_map[MAP_NR(old_pg_table)] & USED && i >= 768) {
 			*new_page_dir = old_pg_table;
 			continue;
 		}
-#ifdef K_DEBUG
-		printk("%s-%d i %d new_page_dir is %p old_pg_table is %p\n", __func__, __LINE__, i, new_page_dir, old_pg_table);
-#endif
+
 		new_pg_table = get_free_page();
 		if (!new_pg_table) {
 			free_page_tables(tsk);
@@ -291,6 +291,7 @@ int copy_page_tables(struct task_struct * tsk)
 		}
 	}
 	invalidate();
+	//show_mem();
 #ifdef K_DEBUG
 	printk("%s-%d get free pages number %d\n", __func__, __LINE__, c);
 #endif
@@ -376,9 +377,6 @@ void un_wp_page(unsigned long * table_entry)
  *
  * If it's in code space we exit with a segment error.
  */
- 
-#define GET_DIR_ENTRY_OFFSET(linear_addr) (linear_addr >> 22)
-
 void do_wp_page(unsigned long error_code,unsigned long address)
 {
 #if 0
@@ -390,9 +388,8 @@ void do_wp_page(unsigned long error_code,unsigned long address)
 	(((address>>10) & 0xffc) + (0xfffff000 &
 	*((unsigned long *) ((address>>20) &0xffc)))));
 #endif
-
 	unsigned long* dir_base = (unsigned long *)current->tss.cr3;
-	unsigned long* dir_item = dir_base + GET_DIR_ENTRY_OFFSET(address);
+	unsigned long* dir_item = dir_base + (address >> 22);
 	un_wp_page((unsigned long *)
 		(((address>>10) & 0xffc) + (0xfffff000 & *dir_item)));
 
@@ -652,9 +649,9 @@ void show_mem(void)
 		else
 			shared += mem_map[i]-1;
 	}
-	printk("Buffer blocks:   %6dMB\n", (nr_buffers*BLOCK_SIZE)/(1024*1024));
-	printk("Tatal pages:     %6dMB\n", (total*PAGE_SIZE)/(1024*1024));
-	printk("Free pages:      %6dMB\n", (free*PAGE_SIZE)/(1024*1024));
-	printk("Reserved pages:  %6dMB\n", (reserved*PAGE_SIZE)/(1024*1024));
-	printk("Shared pages:    %6dMB\n", (shared*PAGE_SIZE)/(1024*1024));
+	printk("Buffer blocks:   %6d\n", nr_buffers);
+	printk("Tatal pages:     %6d\n", total);
+	printk("Free pages:      %6d\n", free);
+	printk("Reserved pages:  %6d\n", reserved);
+	printk("Shared pages:    %6d\n", shared);
 }

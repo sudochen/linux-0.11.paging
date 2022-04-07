@@ -211,9 +211,7 @@ setup_paging:
 	
     /* Identity-map the kernel in low 4MB memory for ease of transition */
 	movl $pg0+7,pg_dir		    /* set present bit/user r/w */
-    movl $pg1+7,pg_dir+4		/* set present bit/user r/w */
-    movl $pg2+7,pg_dir+8		/* set present bit/user r/w */
-    movl $pg3+7,pg_dir+12		/* set present bit/user r/w */
+
 	
     /* But the real place is at 0xC0000000 */
 	movl $pg0+7,pg_dir+3072	    /* set present bit/user r/w */

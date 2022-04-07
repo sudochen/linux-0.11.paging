@@ -21,13 +21,30 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  */
-static inline int fork(void) __attribute__((always_inline));
-static inline int pause(void) __attribute__((always_inline));
-static inline _syscall0(int,fork)
-static inline _syscall0(int,pause)
-static inline _syscall1(int,setup,void *,BIOS)
-static inline _syscall0(int,sync)
-static inline _syscall0(int,getpid)
+#ifndef K_INLINE
+#define K_INLINE __attribute__((always_inline))
+#endif
+
+static inline K_INLINE _syscall0(int,fork)
+static inline K_INLINE _syscall0(int,pause)
+static inline K_INLINE _syscall1(int,setup,void *,BIOS)
+static inline K_INLINE _syscall0(int,sync)
+static inline K_INLINE _syscall0(pid_t,setsid)
+static inline K_INLINE _syscall3(int,write,int,fd,const char *,buf,off_t,count)
+static inline K_INLINE _syscall1(int,dup,int,fd)
+static inline K_INLINE _syscall3(int,execve,const char *,file,char **,argv,char **,envp)
+static inline K_INLINE _syscall3(int,open,const char *,file,int,flag,int,mode)
+static inline K_INLINE _syscall1(int,close,int,fd)
+static inline K_INLINE _syscall3(pid_t,waitpid,pid_t,pid,int *,wait_stat,int,options)
+static inline K_INLINE _syscall0(int,getpid)
+
+static inline K_INLINE pid_t wait(int * wait_stat)
+{
+	return waitpid(-1,wait_stat,0);
+}
+
+static inline K_INLINE void init(void);
+
 
 #include <linux/tty.h>
 #include <linux/sched.h>
@@ -174,6 +191,7 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	floppy_init();
 	printk("kernel move to user\n");
 	show_mem();
+
 	/*
 	 * sti允许中断
 	 *
@@ -260,10 +278,10 @@ static char * envp_rc[] = { "HOME=/", NULL };
 static char * argv[] = { "-/bin/sh",NULL };
 static char * envp[] = { "HOME=/usr/root", NULL };
 
-void init(void)
+
+static inline K_INLINE void init(void)
 {
-	int pid,i;
-	int j = 0;
+	int pid, i;
 
 	setup((void *) &drive_info);
 	(void) open("/dev/tty1",O_RDWR,0);
@@ -272,41 +290,18 @@ void init(void)
 	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
 		NR_BUFFERS*BLOCK_SIZE);
 	printf("Free mem: %d bytes\n\r",memory_end-main_memory_start);
-	
-#if 0
+
 	if (!(pid=fork())) {
-		printf("%s-%d this is task %d\n", __func__, __LINE__, getpid());
+		printf("init fork current pid is %d\n", getpid());
 		close(0);
 		if (open("/etc/rc",O_RDONLY,0))
 			_exit(1);
 		execve("/bin/sh",argv_rc,envp_rc);
 		_exit(2);
 	}
-	printf("%s-%d this is task %d\n", __func__, __LINE__, getpid());
-	if (pid>0) {
-		while (pid != wait(&i));
-	}
-#endif
-#if 0
-	printf("%s-%d this is task %d\n", __func__, __LINE__, getpid());
+	if (pid>0)
+		while (pid != wait(&i))
 
-	pid = fork();
-	if (pid < 0) {
-		printf("fork failed\n");
-		return;
-	}
-
-	if (!pid) {
-		printf("this is a test pid %d\n", getpid());
-		_exit(2);
-	}
-
-	if (pid > 0) {
-		int j = wait(&i);
-		printf("jjjjjjjjjjjjjjjjjj is %d\n", j);
-		
-	}
-#endif
 	/* nothing */;
 	while (1) {
 		if ((pid=fork())<0) {
@@ -314,31 +309,21 @@ void init(void)
 			continue;
 		}
 		if (!pid) {
-			printf("%s-%d this is task %d\n", __func__, __LINE__, getpid());
 			close(0);close(1);close(2);
 			setsid();
 			(void) open("/dev/tty1",O_RDWR,0);
 			(void) dup(0);
 			(void) dup(0);
-			int t = execve("/bin/sh",argv,envp);
-			printf("dddddddddddddddddddd\n");
-			printf("dddddddddddddddddddd\n");
-			printf("dddddddddddddddddddd\n");
-			printf("dddddddddddddddddddd\n");
-			printf("dddddddddddddddddddd\n");
-			printf("dddddddddddddddddddd\n");
-			printf("dddddddddddddddddddd\n");
-			printf("dddddddddddddddddddd\n");
-			printf("dddddddddddddddddddd\n");
-			_exit(t);
+			_exit(execve("/bin/sh",argv,envp));
 		}
-		while (1)
-			if (pid == wait(&i))
+		while (1) {
+			if (pid == wait(&i)) {
 				break;
-		printf("\n\rchild %d died with code %04x\n\r",pid,i);
+			}
+			
+		}
+		printf("\n\rchild %d died with code %04x\n\r",pid);
 		sync();
 	}
-	printf("DDDDDDDDDDDDDD\n");
 	_exit(0);	/* NOTE! _exit, not exit() */
 }
-

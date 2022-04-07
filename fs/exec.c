@@ -456,7 +456,8 @@ restart_interp:
 exec_error2:
 	iput(inode);
 exec_error1:
-	for (i=0 ; i<MAX_ARG_PAGES ; i++)
+	for (i=0 ; i<MAX_ARG_PAGES ; i++) {
 		free_page(page[i]);
+	}
 	return(retval);
 }
