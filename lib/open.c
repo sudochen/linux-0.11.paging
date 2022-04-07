@@ -7,7 +7,7 @@
 #define __LIBRARY__
 #include <unistd.h>
 #include <stdarg.h>
-
+#if 0
 int open(const char * filename, int flag, ...)
 {
 	register int res;
@@ -23,3 +23,4 @@ int open(const char * filename, int flag, ...)
 	errno = -res;
 	return -1;
 }
+#endif

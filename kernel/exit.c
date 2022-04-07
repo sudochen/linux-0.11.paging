@@ -48,8 +48,9 @@ static void kill_session(void)
 	struct task_struct **p = NR_TASKS + task;
 	
 	while (--p > &FIRST_TASK) {
-		if (*p && (*p)->session == current->session)
+		if (*p && (*p)->session == current->session) {
 			(*p)->signal |= 1<<(SIGHUP-1);
+		}
 	}
 }
 
@@ -90,6 +91,7 @@ static void tell_father(int pid)
 				continue;
 			if (task[i]->pid != pid)
 				continue;
+			//printk("ddddddddddddddddd %d %d is SIGCHLD\n", i, pid);
 			task[i]->signal |= (1<<(SIGCHLD-1));
 			return;
 		}
@@ -128,13 +130,7 @@ int do_exit(long code)
 		kill_session();
 	current->state = TASK_ZOMBIE;
 	current->exit_code = code;
-#ifdef K_DEBUG
-	printk("%s-%d state is %d code is %d  current %d father %d start\n", __func__, __LINE__, current->state, code, current->pid, current->father);
-#endif
 	tell_father(current->father);
-#ifdef K_DEBUG
-	printk("%s-%d state is %d code is %d  current %d father %d end\n", __func__, __LINE__, current->state, code, current->pid, current->father);
-#endif
 	schedule();
 	return (-1);	/* just to suppress warnings */
 }

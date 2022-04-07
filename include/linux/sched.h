@@ -100,6 +100,7 @@ struct task_struct {
 /* file system info */
 	int tty;		/* -1 if no tty, so it must be signed */
 	unsigned short umask;
+	
 	struct m_inode * pwd;
 	struct m_inode * root;
 	struct m_inode * executable;
@@ -121,14 +122,14 @@ struct task_struct {
 /* ec,brk... */	0,0,0,0,0,0, \
 /* pid etc.. */	0,-1,0,0,0, \
 /* uid etc */	0,0,0,0,0,0, \
-/* alarm */	0,0,0,0,0,0, \
+/* alarm */	0,0,0,0,0,0,\
 /* math */	0, \
 /* fs info */	-1,0022,NULL,NULL,NULL,0, \
 /* filp */	{NULL,}, \
 	{ \
 		{0,0}, \
-/* ldt */		{0xfff,0xc0c0fa00}, \
-		{0xfff,0xc0c0f200} \
+/* ldt */		{0x9f,0xc0fa00}, \
+		{0x9f,0xc0f200} \
 	}, \
 /*tss*/	{0,PAGE_SIZE+(long)&init_task,0x10,0,0,0,0,(long)&pg_dir,\
 	 0,0,0,0,0,0,0,0, \

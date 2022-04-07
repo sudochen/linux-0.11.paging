@@ -148,8 +148,12 @@ void schedule(void)
 	switch_to_by_stack((long)pnext, (long)(_LDT(next)));
 #else
 #if 0
-	printk("%s switch to %d\n", __func__, next);
-	if (next == 1) {
+	
+	if (next == 2) {
+		printk("%s switch to %d\n", __func__, next);
+	}
+#endif
+#if 0
 		unsigned long dir = task[next]->tss.cr3;
 		unsigned long *page_dir;
 		unsigned long page_table;
