@@ -322,7 +322,7 @@ static inline K_INLINE void init(void)
 			}
 			
 		}
-		printf("\n\rchild %d died with code %04x\n\r",pid);
+		printf("\n\rchild %d died with code %04x\n\r",pid, i);
 		sync();
 	}
 	_exit(0);	/* NOTE! _exit, not exit() */
