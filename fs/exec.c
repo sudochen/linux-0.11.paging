@@ -202,9 +202,7 @@ static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 	data_limit = TASK_SIZE;
 	code_base = data_base = 0;
 	current->start_code = code_base;
-#ifdef K_DEBUG
-	printk("%s-%d code base %p code limit %p\n", __func__, __LINE__, code_base, code_limit);
-#endif
+
 	set_base(current->ldt[1],code_base);
 	set_limit(current->ldt[1],code_limit);
 	set_base(current->ldt[2],data_base);
@@ -230,9 +228,6 @@ static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 		 * 则将此物理页映射到data_base地址处
 		 */
 		if (page[i]) {
-#ifdef K_DEBUG
-			printk("%s-%d put_page %p to %p\n", __func__, __LINE__, page[i], data_base);
-#endif
 			put_page(page[i], data_base);
 		}
 	}
@@ -440,10 +435,6 @@ restart_interp:
 	current->brk = ex.a_bss +
 		(current->end_data = ex.a_data +
 		(current->end_code = ex.a_text));
-#ifdef K_DEBUG
-	printk("%s-%d end_code is %x, end_data is %x ex.a_entry %x\n", 
-		__func__, __LINE__, current->end_code, current->end_data, ex.a_entry);
-#endif
 	current->start_stack = p & 0xfffff000;
 	current->euid = e_uid;
 	current->egid = e_gid;

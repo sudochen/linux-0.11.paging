@@ -178,8 +178,6 @@ void clear_page_tables(struct task_struct * tsk)
 	}
 	for (i = 0 ; i < 768 ; i++,page_dir++)
 		free_one_table(page_dir);
-	
-	//tmp = (unsigned long)(page_dir + 768);
 	invalidate();
 	return;
 }
@@ -196,21 +194,25 @@ int free_page_tables(struct task_struct * tsk)
 
 	if (!tsk)
 		return 1;
+		
 	if (tsk == task[0]) {
-		printk("task[0] (swapper) killed: unable to recover\n");
-		panic("Trying to free up swapper memory space");
+		panic("Trying to free up task[0] (swapper) memory space");
 	}
+	
 	pg_dir = tsk->tss.cr3;
 	if (!pg_dir) {
 		printk("Trying to free kernel page-directory: not good\n");
 		return 1;
 	}
+	
 	tsk->tss.cr3 = (unsigned long) 0;
 	if (tsk == current)
 		__asm__ __volatile__("movl %0,%%cr3"::"a" (tsk->tss.cr3));
+		
 	page_dir = (unsigned long *) pg_dir;
 	for (i = 0 ; i < 1024 ; i++,page_dir++)
 		free_one_table(page_dir);
+		
 	*page_dir = 0;
 	free_page(pg_dir);
 	invalidate();
@@ -226,7 +228,7 @@ int free_page_tables(struct task_struct * tsk)
 int copy_page_tables(struct task_struct * tsk)
 {
 	int i;
-	int c = 0;
+	int page_count = 1024;
 	unsigned long old_pg_dir, *old_page_dir;
 	unsigned long new_pg_dir, *new_page_dir;
 
@@ -234,14 +236,22 @@ int copy_page_tables(struct task_struct * tsk)
 	new_pg_dir = get_free_page();
 	if (!new_pg_dir)
 		return -1;
-	c++;
-#ifdef K_DEBUG
-	printk("old_page_dir %p nr %d old pid %d\n", old_pg_dir, mem_map[MAP_NR(old_pg_dir)], current->pid);
-	printk("new_page_dir %p nr %d new pid %d\n", new_pg_dir, mem_map[MAP_NR(new_pg_dir)], tsk->pid);
-#endif	
+	
 	tsk->tss.cr3 = new_pg_dir;
 	old_page_dir = (unsigned long *) old_pg_dir;
 	new_page_dir = (unsigned long *) new_pg_dir;
+
+	/* 
+	 * old_pg_dir如果是0，表示第一个进程，第一个进程只有160个也有效，这样
+	 * 做可以节省很多内存
+	 *
+	 */
+	if (!old_pg_dir) {
+		page_count = 160;
+	} else {
+		page_count = 1024;
+	}
+	
 	for (i = 0 ; i < 1024 ; i++,old_page_dir++,new_page_dir++) {
 		int j;
 		unsigned long old_pg_table, *old_page_table;
@@ -257,7 +267,9 @@ int copy_page_tables(struct task_struct * tsk)
 			continue;
 		}
 
-		/* 如果是内核空间复用页表节省内存，否则创建自己的进程空间页表
+		/* 
+		 * i >= 768表示3GB以上的内核，3GB以上的内存表示内核空间
+		 * 所有进程共享内核空间，内核空间的页表都是一个
 		 *
 		 */
 		if (mem_map[MAP_NR(old_pg_table)] & USED && i >= 768) {
@@ -270,11 +282,10 @@ int copy_page_tables(struct task_struct * tsk)
 			free_page_tables(tsk);
 			return -1;
 		}
-		c++;
 		*new_page_dir = new_pg_table | PAGE_ACCESSED | 7;
 		old_page_table = (unsigned long *) (0xfffff000 & old_pg_table);
 		new_page_table = (unsigned long *) (0xfffff000 & new_pg_table);
-		for (j = 0 ; j < 1024 ; j++,old_page_table++,new_page_table++) {
+		for (j = 0 ; j < page_count ; j++,old_page_table++,new_page_table++) {
 			unsigned long pg;
 			pg = *old_page_table;
 			if (!pg)
@@ -292,9 +303,6 @@ int copy_page_tables(struct task_struct * tsk)
 	}
 	invalidate();
 	//show_mem();
-#ifdef K_DEBUG
-	printk("%s-%d get free pages number %d\n", __func__, __LINE__, c);
-#endif
 	return 0;
 }
 
@@ -312,9 +320,6 @@ unsigned long put_page(unsigned long page, unsigned long address)
 		printk("mem_map disagrees with %p at %p\n",page,address);
 		
 	page_table = (unsigned long *) (tsk->tss.cr3 + ((address>>20) & 0xffc));
-#ifdef K_DEBUG
-	printk("%s-%d page_table is %p page is %p address %p pid is %d\n", __func__, __LINE__, page_table, page, address, current->pid);
-#endif
 	
 	if ((*page_table)&1)
 		page_table = (unsigned long *) (0xfffff000 & *page_table);
@@ -355,8 +360,10 @@ void un_wp_page(unsigned long * table_entry)
 		invalidate();
 		return;
 	}
-	if (!(new_page=get_free_page()))
+	if (!(new_page=get_free_page())) {
+		printk("%s-%d\n", __func__, __LINE__);
 		oom();
+	}
 
 	/*
 	 *  如果原页面不是保留且不为1，表示已经被共享，给其值减一，设置新的页表
@@ -438,6 +445,7 @@ void get_empty_page(unsigned long address)
 
 	if (!(tmp=get_free_page()) || !put_page(tmp,address)) {
 		free_page(tmp);		/* 0 is ok - ignored */
+		printk("%s-%d tmp is %p\n", __func__, __LINE__, tmp);
 		oom();
 	}
 }
@@ -539,35 +547,16 @@ void do_no_page(unsigned long error_code,unsigned long address)
 	address &= 0xfffff000;
 	tmp = address - current->start_code;
 
-#ifdef K_DEBUG
-	printk("%s address is %p start is %p pid %d\n", __func__, address, current->start_code, current->pid);
-	if (current->pid == 1) {
-		unsigned long dir = current->tss.cr3;
-		unsigned long *page_dir;
-		unsigned long page_table;
-
-		page_table = (dir + ((address>>20) & 0xffc));
-		page_dir = (unsigned long *) dir;
-		for (i = 0 ; i < 1024 ; i++,page_dir++) {
-			page_table = *page_dir;
-			if (!page_table)
-				continue;
-			if (!(1 & page_table)) {
-				continue;
-			}
-			printk("%s xxxxxxxxxxx page_table reserve %p\n", __func__, page_table);
-			printk("%s xxxxxxxxxxx page reserve %p\n", __func__, (*(unsigned long*)(page_table&0xfffff000)));
-		}
-	}
-#endif
 	if (!current->executable || tmp >= current->end_data) {
 		get_empty_page(address);
 		return;
 	}
 	if (share_page(tmp))
 		return;
-	if (!(page = get_free_page()))
+	if (!(page = get_free_page())) {
+		printk("%s-%d\n", __func__, __LINE__);
 		oom();
+	}
 		
 	/* remember that 1 block is used for header */
 	block = 1 + tmp/BLOCK_SIZE;
@@ -583,6 +572,7 @@ void do_no_page(unsigned long error_code,unsigned long address)
 	if (put_page(page,address))
 		return;	
 	free_page(page);
+	printk("%s-%d\n", __func__, __LINE__);
 	oom();
 }
 

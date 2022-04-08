@@ -78,16 +78,12 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	struct task_struct *p;
 	int i;
 	struct file *f;
-#ifndef CONFIG_TASK_TSS 
 	long *stack_top = NULL;
-#endif
 
 	p = (struct task_struct *) get_free_page();
 	if (!p)
 		return -EAGAIN;
 	task[nr] = p;
-
-	
 
 	// NOTE!: the following statement now work with gcc 4.3.2 now, and you
 	// must compile _THIS_ memcpy without no -O of gcc.#ifndef GCC4_3
@@ -107,56 +103,49 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->cutime = p->cstime = 0;
 	p->start_time = jiffies;
 
-
-#ifndef CONFIG_TASK_TSS
-	stack_top = (long *)(PAGE_SIZE + (long)p);
-
-	*(--stack_top) = ss & 0xffff;
-	*(--stack_top) = esp;
-	*(--stack_top) = eflags;
-	*(--stack_top) = cs & 0xffff;
-	*(--stack_top) = eip;
-
-	*(--stack_top) = ds & 0xffff; 
-	*(--stack_top) = es & 0xffff; 
-	*(--stack_top) = fs & 0xffff; 
-	*(--stack_top) = gs & 0xffff;
-	*(--stack_top) = esi; 
-	*(--stack_top) = edi; 
-	*(--stack_top) = edx;
-	*(--stack_top) = (long)first_return_from_kernel;
-	*(--stack_top) = ebp;
-	*(--stack_top) = ecx;
-	*(--stack_top) = ebx;
-	*(--stack_top) = 0;
-	
-	p->stack_top = (long)stack_top;
-	
-#else
-
-	p->tss.back_link = 0;
-	p->tss.esp0 = PAGE_SIZE + (long) p;
-	p->tss.ss0 = 0x10;
-	p->tss.eip = eip;
-	p->tss.eflags = eflags;
-	p->tss.eax = 0;			/*为什么进程返回0的原因*/
-	p->tss.ecx = ecx;
-	p->tss.edx = edx;
-	p->tss.ebx = ebx;
-	p->tss.esp = esp;
-	p->tss.ebp = ebp;
-	p->tss.esi = esi;
-	p->tss.edi = edi;
-	p->tss.es = es & 0xffff;
-	p->tss.cs = cs & 0xffff;
-	p->tss.ss = ss & 0xffff;
-	p->tss.ds = ds & 0xffff;
-	p->tss.fs = fs & 0xffff;
-	p->tss.gs = gs & 0xffff;
-	p->tss.ldt = _LDT(nr);
-	p->tss.trace_bitmap = 0x80000000;
-	
-#endif
+	if (switch_stack) {
+		stack_top = (long *)(PAGE_SIZE + (long)p);
+		*(--stack_top) = ss & 0xffff;
+		*(--stack_top) = esp;
+		*(--stack_top) = eflags;
+		*(--stack_top) = cs & 0xffff;
+		*(--stack_top) = eip;
+		*(--stack_top) = ds & 0xffff; 
+		*(--stack_top) = es & 0xffff; 
+		*(--stack_top) = fs & 0xffff; 
+		*(--stack_top) = gs & 0xffff;
+		*(--stack_top) = esi; 
+		*(--stack_top) = edi; 
+		*(--stack_top) = edx;
+		*(--stack_top) = (long)first_return_from_kernel;
+		*(--stack_top) = ebp;
+		*(--stack_top) = ecx;
+		*(--stack_top) = ebx;
+		*(--stack_top) = 0;		/*为什么进程返回0的原因*/
+		p->stack_top = (long)stack_top;
+	} else { 
+		p->tss.back_link = 0;
+		p->tss.esp0 = PAGE_SIZE + (long) p;
+		p->tss.ss0 = 0x10;
+		p->tss.eip = eip;
+		p->tss.eflags = eflags;
+		p->tss.eax = 0;			/*为什么进程返回0的原因*/
+		p->tss.ecx = ecx;
+		p->tss.edx = edx;
+		p->tss.ebx = ebx;
+		p->tss.esp = esp;
+		p->tss.ebp = ebp;
+		p->tss.esi = esi;
+		p->tss.edi = edi;
+		p->tss.es = es & 0xffff;
+		p->tss.cs = cs & 0xffff;
+		p->tss.ss = ss & 0xffff;
+		p->tss.ds = ds & 0xffff;
+		p->tss.fs = fs & 0xffff;
+		p->tss.gs = gs & 0xffff;
+		p->tss.ldt = _LDT(nr);
+		p->tss.trace_bitmap = 0x80000000;
+	}
 
 
 	if (last_task_used_math == current)
@@ -176,12 +165,13 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	if (current->executable)
 		current->executable->i_count++;
 
-	set_tss_desc(gdt+(nr<<1)+FIRST_TSS_ENTRY,&(p->tss));
-	set_ldt_desc(gdt+(nr<<1)+FIRST_LDT_ENTRY,&(p->ldt));
+	if (switch_stack) {
+		set_ldt_desc(gdt+(nr<<1)+FIRST_LDT_ENTRY,&(p->ldt));
+	} else {
+		set_tss_desc(gdt+(nr<<1)+FIRST_TSS_ENTRY,&(p->tss));
+		set_ldt_desc(gdt+(nr<<1)+FIRST_LDT_ENTRY,&(p->ldt));
+	}
 	p->state = TASK_RUNNING;	/* do this last, just in case */
-#ifdef K_DEBUG
-	printk("%s-%d set task %d state to running father %d\n", __func__, __LINE__, p->pid, p->father);
-#endif
 	return last_pid;
 }
 

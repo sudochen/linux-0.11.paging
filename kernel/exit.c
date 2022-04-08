@@ -144,9 +144,7 @@ int sys_waitpid(pid_t pid,unsigned long * stat_addr, int options)
 {
 	int flag, code;
 	struct task_struct ** p;
-#ifdef K_DEBUG
-	printk("%s-%d syswaitpid %d\n", __func__, __LINE__, current->pid);
-#endif
+	
 	verify_area(stat_addr,4);
 repeat:
 	flag=0;

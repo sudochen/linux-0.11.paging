@@ -183,6 +183,7 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	time_init();
 	printk("kernel sched init\n");
 	sched_init();
+	printk("task switch use %s\n", switch_stack ? "kernel stack" : "TSS");
 	printk("kernel buffer init\n");
 	buffer_init(buffer_memory_end);
 	printk("kernel hd init\n");

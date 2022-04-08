@@ -149,29 +149,31 @@ coprocessor_error:
 
 .align 2
 switch_to_by_stack:
-    pushl %ebp
-    movl %esp,%ebp
-    pushl %ecx
-    pushl %ebx
-    pushl %eax
-    movl 8(%ebp),%ebx
-    cmpl %ebx,current
-    je 1f
+    pushl %ebp                      # 入栈保存ebp
+    movl %esp,%ebp                  # 将当前的栈指针存放在ebp中
+    pushl %ecx                      # 入栈保存ecx
+    pushl %ebx                      # 入栈保存ebx
+    pushl %eax                      # 入栈保存eax
+    movl 8(%ebp),%ebx               # *(ebp + 8)存放的是pnext
+    cmpl %ebx,current               # 判断要切换的任务和当前任务是不是一样
+    je 1f                           # 如果一样跳转到1处
     # switch_to PCB
-    movl %ebx,%eax
-	xchgl %eax,current
+    movl %ebx,%eax                  # pnext赋值给ebx
+	xchgl %eax,current              # 交换current和eax，eax存放的是pnext，此时current存放的是pnext
     # rewrite TSS pointer
-    movl tss,%ecx
-    addl $4096,%ebx
-    movl %ebx,4(%ecx)
+    movl tss,%ecx                   # 当前tss段地址
+    addl $4096,%ebx                 # task struct的顶端
+    movl %ebx,4(%ecx)               # 4表示esp0的偏移，设置tss的内核态指针为task的顶端
     # switch_to system core stack
-    movl %esp,stack_top(%eax)
-    movl 8(%ebp),%ebx
-    movl stack_top(%ebx),%esp
+    movl %esp,stack_top(%eax)       # 当前esp存放到old task->stack_stop
+    movl 8(%ebp),%ebx               # ebx为pnext
+    movl stack_top(%ebx),%esp       # 使用pnext恢复栈
     # switch_to LDT
-	movl 12(%ebp), %ecx
-    lldt %cx
-    movl $0x17,%ecx
+	movl 12(%ebp), %ecx             # 获取局部描述符
+    lldt %cx                        # 加载局部描述符
+    movl 16(%ebp), %ecx             # 获取CR3
+    movl %ecx,%cr3                  # 设置CR3
+    movl $0x17,%ecx                 # 设置fs为0x17
 	mov %cx,%fs
     # nonsense
     cmpl %eax,last_task_used_math 
