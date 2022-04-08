@@ -27,18 +27,18 @@
 
 static inline K_INLINE _syscall0(int,fork)
 static inline K_INLINE _syscall0(int,pause)
-static inline K_INLINE _syscall1(int,setup,void *,BIOS)
-static inline K_INLINE _syscall0(int,sync)
-static inline K_INLINE _syscall0(pid_t,setsid)
-static inline K_INLINE _syscall3(int,write,int,fd,const char *,buf,off_t,count)
-static inline K_INLINE _syscall1(int,dup,int,fd)
-static inline K_INLINE _syscall3(int,execve,const char *,file,char **,argv,char **,envp)
-static inline K_INLINE _syscall3(int,open,const char *,file,int,flag,int,mode)
-static inline K_INLINE _syscall1(int,close,int,fd)
-static inline K_INLINE _syscall3(pid_t,waitpid,pid_t,pid,int *,wait_stat,int,options)
-static inline K_INLINE _syscall0(int,getpid)
+static _syscall1(int,setup,void *,BIOS)
+static _syscall0(int,sync)
+static _syscall0(pid_t,setsid)
+static _syscall3(int,write,int,fd,const char *,buf,off_t,count)
+static _syscall1(int,dup,int,fd)
+static _syscall3(int,execve,const char *,file,char **,argv,char **,envp)
+static _syscall3(int,open,const char *,file,int,flag,int,mode)
+static _syscall1(int,close,int,fd)
+static _syscall3(pid_t,waitpid,pid_t,pid,int *,wait_stat,int,options)
+static _syscall0(int,getpid)
 
-static inline K_INLINE pid_t wait(int * wait_stat)
+static pid_t wait(int * wait_stat)
 {
 	return waitpid(-1,wait_stat,0);
 }
@@ -285,7 +285,7 @@ static inline K_INLINE void init(void)
 	int pid, i;
 
 	setup((void *) &drive_info);
-	(void) open("/dev/tty1",O_RDWR,0);
+	(void) open("/dev/tty0",O_RDWR,0);
 	(void) dup(0);
 	(void) dup(0);
 	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
@@ -312,7 +312,7 @@ static inline K_INLINE void init(void)
 		if (!pid) {
 			close(0);close(1);close(2);
 			setsid();
-			(void) open("/dev/tty1",O_RDWR,0);
+			(void) open("/dev/tty0",O_RDWR,0);
 			(void) dup(0);
 			(void) dup(0);
 			_exit(execve("/bin/sh",argv,envp));
