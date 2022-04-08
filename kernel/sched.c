@@ -64,6 +64,8 @@ struct task_struct *last_task_used_math = NULL;
 
 struct task_struct * task[NR_TASKS] = {&(init_task.task), };
 
+long switch_stack = 0;
+
 long user_stack [ PAGE_SIZE>>2 ] ;
 
 struct {
@@ -102,7 +104,7 @@ void math_state_restore()
  * information in task[0] is never used.
  */
 
-extern void switch_to_by_stack(long, long);
+extern void switch_to_by_stack(long, long, long);
 void schedule(void)
 {
 	int i,next,c;
@@ -144,34 +146,11 @@ void schedule(void)
 						(*p)->priority;
 	}
 	
-#ifndef CONFIG_TASK_TSS
-	switch_to_by_stack((long)pnext, (long)(_LDT(next)));
-#else
-#if 0
-	
-	if (next == 2) {
-		printk("%s switch to %d\n", __func__, next);
+	if (switch_stack) {
+		switch_to_by_stack((long)pnext, (long)(_LDT(next)), pnext->tss.cr3);
+	} else {
+		switch_to(next);
 	}
-#endif
-#if 0
-		unsigned long dir = task[next]->tss.cr3;
-		unsigned long *page_dir;
-		unsigned long page_table;
-		printk("task1 cr3 is %p\n", dir);
-		page_dir = (unsigned long *) dir;
-		for (i = 0 ; i < 1024 ; i++,page_dir++) {
-			page_table = *page_dir;
-			if (!page_table)
-				continue;
-			if (!(1 & page_table)) {
-				continue;
-			}
-			printk("xxxxxxxxxxx page_table reserve %p\n", page_table);
-		}
-	}
-#endif
-	switch_to(next);
-#endif
 }
 
 int sys_pause(void)
