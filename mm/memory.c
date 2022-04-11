@@ -113,7 +113,7 @@ void free_page(unsigned long addr)
 	i = MAP_NR(addr);
 
 	if (mem_map[i] & USED) {
-		//printk("system reserve mem, ignore free\n");
+		printk("system reserve mem, ignore free\n");
 		return;
 	}
 
@@ -152,6 +152,10 @@ static void free_one_table(unsigned long * page_dir)
 		
 		if (!pg)
 			continue;
+			
+		if (mem_map[MAP_NR(pg)] & USED)
+			continue;
+			
 		*page_table = 0;
 		if (1 & pg)
 			free_page(0xfffff000 & pg);
@@ -246,7 +250,7 @@ int copy_page_tables(struct task_struct * tsk)
 	 * 做可以节省很多内存
 	 *
 	 */
-	if (!old_pg_dir) {
+	if (current == task[0] || current == task[1]) {
 		page_count = 160;
 	} else {
 		page_count = 1024;
@@ -302,7 +306,6 @@ int copy_page_tables(struct task_struct * tsk)
 		}
 	}
 	invalidate();
-	//show_mem();
 	return 0;
 }
 
@@ -386,44 +389,11 @@ void un_wp_page(unsigned long * table_entry)
  */
 void do_wp_page(unsigned long error_code,unsigned long address)
 {
-#if 0
-/* we cannot do this yet: the estdio library writes to code space */
-/* stupid, stupid. I really want the libc.a from GNU */
-	if (CODE_SPACE(address))
-		do_exit(SIGSEGV);
-		un_wp_page((unsigned long *)address);
-	(((address>>10) & 0xffc) + (0xfffff000 &
-	*((unsigned long *) ((address>>20) &0xffc)))));
-#endif
 	unsigned long* dir_base = (unsigned long *)current->tss.cr3;
 	unsigned long* dir_item = dir_base + (address >> 22);
 	un_wp_page((unsigned long *)
 		(((address>>10) & 0xffc) + (0xfffff000 & *dir_item)));
-
-#if 0
-	unsigned long address;
-
-	printk("%s address is %p start is %p pid %d\n", __func__, __address, current->start_code, current->pid);
-	/*
-	 * 页表地址
-	 */
-	address = current->tss.cr3 + ((__address>>20) & 0xffc);
-	/*
-	 * 页表地址
-	 */
-	address = address & 0xfffff000;
-	/*
-	 * 页在页表的地址
-	 */
-	address = address + (__address>>10) & 0xffc;
-	/*
-	 * 页的物理地址
-	 */
-	address = *(unsigned long *)(address);
-	un_wp_page((unsigned long *)address);
-#endif
 }
-
 
 void write_verify(unsigned long address)
 {
@@ -444,8 +414,8 @@ void get_empty_page(unsigned long address)
 	unsigned long tmp;
 
 	if (!(tmp=get_free_page()) || !put_page(tmp,address)) {
+		printk("%s-%d tmp: %p\n", __func__, __LINE__, tmp);
 		free_page(tmp);		/* 0 is ok - ignored */
-		printk("%s-%d tmp is %p\n", __func__, __LINE__, tmp);
 		oom();
 	}
 }
@@ -547,6 +517,11 @@ void do_no_page(unsigned long error_code,unsigned long address)
 	address &= 0xfffff000;
 	tmp = address - current->start_code;
 
+#ifdef KDEBUG
+	printk("%s-%d do no page address %p start_code %p end_data %p\n", 
+		__func__, __LINE__, address, current->start_code, current->end_data);
+#endif
+
 	if (!current->executable || tmp >= current->end_data) {
 		get_empty_page(address);
 		return;
@@ -572,7 +547,6 @@ void do_no_page(unsigned long error_code,unsigned long address)
 	if (put_page(page,address))
 		return;	
 	free_page(page);
-	printk("%s-%d\n", __func__, __LINE__);
 	oom();
 }
 

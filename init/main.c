@@ -285,7 +285,7 @@ static inline K_INLINE void init(void)
 	int pid, i;
 
 	setup((void *) &drive_info);
-	(void) open("/dev/tty0",O_RDWR,0);
+	(void) open("/dev/tty1",O_RDWR,0);
 	(void) dup(0);
 	(void) dup(0);
 	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
@@ -312,7 +312,7 @@ static inline K_INLINE void init(void)
 		if (!pid) {
 			close(0);close(1);close(2);
 			setsid();
-			(void) open("/dev/tty0",O_RDWR,0);
+			(void) open("/dev/tty1",O_RDWR,0);
 			(void) dup(0);
 			(void) dup(0);
 			_exit(execve("/bin/sh",argv,envp));

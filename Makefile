@@ -82,8 +82,8 @@ clean:
 
 run: qemu
 
-#QEMU_OPS:= -nographic -serial mon:stdio -m 64M -boot a
-QEMU_OPS:= -m 64M -boot a
+QEMU_OPS:= -nographic -serial mon:stdio -m 64M -boot a
+#QEMU_OPS:= -m 64M -boot a
 qemu:
 	qemu-system-i386 ${QEMU_OPS} -fda Image  -hda ./rootfs/hdc-0.11.img 
 
