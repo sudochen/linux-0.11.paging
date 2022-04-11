@@ -45,7 +45,7 @@ int printk(const char *fmt, ...)
 		"pop %%fs\n\t"
 		"pushl %0\n\t"
 		"pushl $buf\n\t"
-		"pushl $0\n\t"
+		"pushl $1\n\t"
 		"call tty_write\n\t"
 		"addl $8,%%esp\n\t"
 		"popl %0\n\t"
