@@ -20,6 +20,9 @@
 
 #include <signal.h>
 
+#define local_irq_disable(flags) __asm__("pushfl ; popl %0 ; cli":"=r" (flags))
+#define local_irq_enable(flags) __asm__("pushl %0 ; popfl"::"r" (flags));
+
 #define _S(nr) (1<<((nr)-1))
 #define _BLOCKABLE (~(_S(SIGKILL) | _S(SIGSTOP)))
 
@@ -64,7 +67,7 @@ struct task_struct *last_task_used_math = NULL;
 
 struct task_struct * task[NR_TASKS] = {&(init_task.task), };
 
-long switch_stack = 0;
+long switch_stack = 1;
 
 long user_stack [ PAGE_SIZE>>2 ] ;
 
@@ -110,9 +113,13 @@ void schedule(void)
 	int i,next,c;
 	struct task_struct *pnext = &(init_task.task);
 	struct task_struct ** p;
+	int flag;
 
 /* check alarm, wake up any interruptible tasks that have got a signal */
 
+
+	local_irq_disable(flag);
+	
 	for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
 		if (*p) {
 			if ((*p)->alarm && (*p)->alarm < jiffies) {
@@ -145,6 +152,8 @@ void schedule(void)
 				(*p)->counter = ((*p)->counter >> 1) +
 						(*p)->priority;
 	}
+
+	local_irq_enable(flag);
 	
 	if (switch_stack) {
 		switch_to_by_stack((long)pnext, (long)(_LDT(next)), pnext->tss.cr3);
@@ -205,6 +214,7 @@ void wake_up(struct task_struct **p)
 		*p = NULL;
 	}
 }
+
 
 /*
  * OK, here are some floppy things that shouldn't be in the kernel

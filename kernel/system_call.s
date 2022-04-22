@@ -160,6 +160,9 @@ switch_to_by_stack:
     # switch_to PCB
     movl %ebx,%eax                  # pnext赋值给ebx
 	xchgl %eax,current              # 交换current和eax，eax存放的是pnext，此时current存放的是pnext
+     # get pnext->page dir base
+    movl 16(%ebp), %ecx             # 获取CR3
+    movl %ecx,%cr3                  # 设置CR3
     # rewrite TSS pointer
     movl tss,%ecx                   # 当前tss段地址
     addl $4096,%ebx                 # task struct的顶端
@@ -171,8 +174,6 @@ switch_to_by_stack:
     # switch_to LDT
 	movl 12(%ebp), %ecx             # 获取局部描述符
     lldt %cx                        # 加载局部描述符
-    movl 16(%ebp), %ecx             # 获取CR3
-    movl %ecx,%cr3                  # 设置CR3
     movl $0x17,%ecx                 # 设置fs为0x17
 	mov %cx,%fs
     # nonsense
