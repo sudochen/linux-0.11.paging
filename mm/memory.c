@@ -56,7 +56,7 @@ static long HIGH_MEMORY = 0;
 static long total_pages = 0;
 
 /* chenwg
- * 复制一页4KB的内存
+ * ����һҳ4KB���ڴ�
  *
  */
 #define copy_page(from,to) \
@@ -68,8 +68,8 @@ static unsigned char mem_map [ PAGING_PAGES ] = {0,};
  * Get physical address of first (actually last :-) free page, and mark it
  * used. If no free pages left, return 0.
  * 
- * 获取一个空闲页的物理地址，获取的页物理地址从LOW_MEM开始
- * 如果成功返回一个物理地址，如果没有返回0
+ * ��ȡһ������ҳ��������ַ����ȡ��ҳ������ַ��LOW_MEM��ʼ
+ * ����ɹ�����һ��������ַ�����û�з���0
  * 
  *
  */
@@ -99,8 +99,8 @@ return __res;
  * Free a page of memory at physical address 'addr'. Used by
  * 'free_page_tables()'
  *
- * 释放一个页，如果地址小于LOW_MEM 1MB以下直接退出
- * addr为物理地址
+ * �ͷ�һ��ҳ�������ַС��LOW_MEM 1MB����ֱ���˳�
+ * addrΪ������ַ
  */
 void free_page(unsigned long addr)
 {
@@ -246,8 +246,8 @@ int copy_page_tables(struct task_struct * tsk)
 	new_page_dir = (unsigned long *) new_pg_dir;
 
 	/* 
-	 * old_pg_dir如果是0，表示第一个进程，第一个进程只有160个也有效，这样
-	 * 做可以节省很多内存
+	 * old_pg_dir�����0����ʾ��һ�����̣���һ������ֻ��160��Ҳ��Ч������
+	 * �����Խ�ʡ�ܶ��ڴ�
 	 *
 	 */
 	if (current == task[0] || current == task[1]) {
@@ -272,8 +272,8 @@ int copy_page_tables(struct task_struct * tsk)
 		}
 
 		/* 
-		 * i >= 768表示3GB以上的内核，3GB以上的内存表示内核空间
-		 * 所有进程共享内核空间，内核空间的页表都是一个
+		 * i >= 768��ʾ3GB���ϵ��ںˣ�3GB���ϵ��ڴ��ʾ�ں˿ռ�
+		 * ���н��̹����ں˿ռ䣬�ں˿ռ��ҳ������һ��
 		 *
 		 */
 		if (mem_map[MAP_NR(old_pg_table)] & USED && i >= 768) {
@@ -346,14 +346,14 @@ unsigned long put_page(unsigned long page, unsigned long address)
 
 
 /*
- * table_entry页表项指针
+ * table_entryҳ����ָ��
  */
 void un_wp_page(unsigned long * table_entry)
 {
 	unsigned long old_page,new_page;
 
 	
-	/* 获取此页对应的物理地址，如果原页面不是保留并且其值为1表示没有共享，设置写标记
+	/* ��ȡ��ҳ��Ӧ��������ַ�����ԭҳ�治�Ǳ���������ֵΪ1��ʾû�й���������д���
 	 *
 	 */
 	old_page = 0xfffff000 & *table_entry;
@@ -369,7 +369,7 @@ void un_wp_page(unsigned long * table_entry)
 	}
 
 	/*
-	 *  如果原页面不是保留且不为1，表示已经被共享，给其值减一，设置新的页表
+	 *  ���ԭҳ�治�Ǳ����Ҳ�Ϊ1����ʾ�Ѿ�������������ֵ��һ�������µ�ҳ��
 	 *
 	 */
 	if (!(mem_map[MAP_NR(old_page)] & USED))
@@ -557,32 +557,32 @@ long get_total_pages(void)
 }
 
 /*******************************************************************************
-	start_mem用作分页的物理内存的起始地址
-	end_mem 实际物理内存的最大地址
+	start_mem��������ҳ�������ڴ����ʼ��ַ
+	end_mem ʵ�������ڴ������ַ
 *******************************************************************************/
 void mem_init(long start_mem, long end_mem)
 {
 	int i;
 
 /*******************************************************************************
-	HIGH_MEMORY是一个变量，用于记录当前内存的最大限制
+	HIGH_MEMORY��һ�����������ڼ�¼��ǰ�ڴ���������
 
-	PAGING_PAGES定义为(PAGING_MEMORY>>12)
-	PAGING_MEMORY的值为15*1024*1024为15MB，在Linux内核中最多能使用的内存为16MB
-	最低的1MB属于内核系统不在内存管理内，即LOW的值为0x100000
+	PAGING_PAGES����Ϊ(PAGING_MEMORY>>12)
+	PAGING_MEMORY��ֵΪ15*1024*1024Ϊ15MB����Linux�ں��������ʹ�õ��ڴ�Ϊ16MB
+	��͵�1MB�����ں�ϵͳ�����ڴ�����ڣ���LOW��ֵΪ0x100000
 
-	因此在系统最开始处先将所有的页面就设置为已用后面在根据实际内存数进行清除
+	�����ϵͳ�ʼ���Ƚ����е�ҳ�������Ϊ���ú����ڸ���ʵ���ڴ����������
 
-	MAP_NR(addr)定义为(((addr) - LOW_MEM) >> 12)表示页编号，我们可以看到页编号
-	去除了最低的1MB空间，并且页编码从start_mem开始，也就是说buffer和ramdisk区域
-	也都被设置为已用
+	MAP_NR(addr)����Ϊ(((addr) - LOW_MEM) >> 12)��ʾҳ��ţ����ǿ��Կ���ҳ���
+	ȥ������͵�1MB�ռ䣬����ҳ�����start_mem��ʼ��Ҳ����˵buffer��ramdisk����
+	Ҳ��������Ϊ����
 
-	end_mem -= start_mem计算出可用内存的大小
-	end_mem >>= 12 右移12位相当于除以4096，表示可用内存大小占用的页数
-	然后设置mem_map对应的标志
+	end_mem -= start_mem����������ڴ�Ĵ�С
+	end_mem >>= 12 ����12λ�൱�ڳ���4096����ʾ�����ڴ��Сռ�õ�ҳ��
+	Ȼ������mem_map��Ӧ�ı�־
 
-	此时系统可用内存已经在mem_map进行管理了，哪些页使用过，哪些页还未使用
-	一目了然
+	��ʱϵͳ�����ڴ��Ѿ���mem_map���й����ˣ���Щҳʹ�ù�����Щҳ��δʹ��
+	һĿ��Ȼ
 *******************************************************************************/
 
 	HIGH_MEMORY = end_mem;

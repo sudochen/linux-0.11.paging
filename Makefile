@@ -82,10 +82,13 @@ clean:
 
 run: qemu
 
-QEMU_OPS:= -nographic -serial mon:stdio -m 64M -boot a
-#QEMU_OPS:= -m 64M -boot a
+QEMU_OPS_T := -nographic -serial mon:stdio -m 64M -boot a
 qemu:
-	qemu-system-i386 ${QEMU_OPS} -fda Image  -hda ./rootfs/hdc-0.11.img 
+	qemu-system-i386 ${QEMU_OPS_T} -fda Image  -hda ./rootfs/hdc-0.11.img 
+
+QEMU_OPS_X := -m 64M -boot a
+qemu-x:
+	qemu-system-i386 ${QEMU_OPS_X} -fda Image  -hda ./rootfs/hdc-0.11.img 
 
 bochs:
 	bochs -f bochsrc
