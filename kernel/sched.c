@@ -20,9 +20,6 @@
 
 #include <signal.h>
 
-#define local_irq_disable(flags) __asm__("pushfl ; popl %0 ; cli":"=r" (flags))
-#define local_irq_enable(flags) __asm__("pushl %0 ; popfl"::"r" (flags));
-
 #define _S(nr) (1<<((nr)-1))
 #define _BLOCKABLE (~(_S(SIGKILL) | _S(SIGSTOP)))
 
@@ -153,7 +150,7 @@ void schedule(void)
 						(*p)->priority;
 	}
 
-	local_irq_enable(flag);
+	local_irq_restore(flag);
 	
 	if (switch_stack) {
 		switch_to_by_stack((long)pnext, (long)(_LDT(next)), pnext->tss.cr3);

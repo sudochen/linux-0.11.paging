@@ -50,6 +50,10 @@ __asm__ ("movl %%esp,%%eax\n\t" \
 #define sti() __asm__ ("sti"::)
 #define cli() __asm__ ("cli"::)
 
+
+#define local_irq_disable(flags) __asm__("pushfl ; popl %0 ; cli":"=r" (flags))
+#define local_irq_restore(flags) __asm__("pushl %0 ; popfl"::"r" (flags));
+
 /*******************************************************************************
 	nop
 *******************************************************************************/
