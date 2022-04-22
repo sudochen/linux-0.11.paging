@@ -1,4 +1,4 @@
-# 仍然是16位指令，在80386实模式下最多访问1MB内存
+# ��Ȼ��16λָ���80386ʵģʽ��������1MB�ڴ�
 	.code16
 # rewrite with AT&T syntax by falcon <wuzhangjin@gmail.com> at 081012
 #
@@ -32,8 +32,8 @@
 #
 # 
 #	ljmp $SETUPSEG, $_start
-# 以上的代码删除掉系统仍然可以运行，以上的代码会修改CS寄存器的内容
-# 因为直接跳转到_start地址处运行也可以, 因此我注释了
+# ���ϵĴ���ɾ����ϵͳ��Ȼ�������У����ϵĴ�����޸�CS�Ĵ���������
+# ��Ϊֱ����ת��_start��ַ������Ҳ����, �����ע����
 #
 # 
 _start:
@@ -41,10 +41,10 @@ _start:
 # ok, the read went well so we get current cursor position and save it for
 # posterity.
 # address	bytes	name		description
-# 0x90000	2		光标位置	列号（0x00最左端），行号（0x00最顶端）
-# 0x90002	2		扩展内存数	系统从1M开始的扩展内存数值（KB），实模式下最多访问1M空间	
+# 0x90000	2		���λ��	�кţ�0x00����ˣ����кţ�0x00��ˣ�
+# 0x90002	2		��չ�ڴ���	ϵͳ��1M��ʼ����չ�ڴ���ֵ��KB����ʵģʽ��������1M�ռ�	
 
-# 获取当前光标的位置，存放在地址0x90000处，因为bootsect程序此时已经没用了，共512个字节，
+# ��ȡ��ǰ����λ�ã�����ڵ�ַ0x90000������Ϊbootsect�����ʱ�Ѿ�û���ˣ���512���ֽڣ�
 # 
 	mov	$INITSEG, %ax	# this is done in bootsect already, but...
 	mov	%ax, %ds		# DS = 0x9000
@@ -53,21 +53,21 @@ _start:
 	int	$0x10			# save it in known place, con_init fetches
 	mov	%dx, %ds:0		# it from 0x90000. save current in 0x90000
 #
-# 获取mem的大小，并存放在0x90002处
+# ��ȡmem�Ĵ�С���������0x90002��
 # Get memory size (extended mem, kB)
 	mov	$0x88, %ah 
 	int	$0x15
 	mov	%ax, %ds:2		# mem size save int 0x90002
 
 #
-# 获取声卡数据存放在0x90004,0x90006处，共四个字节
+# ��ȡ�������ݴ����0x90004,0x90006�������ĸ��ֽ�
 # Get video-card data:
 	mov	$0x0f, %ah
 	int	$0x10
 	mov	%bx, %ds:4	# bh = display page, address is 0x90004
 	mov	%ax, %ds:6	# al = video mode, ah = window width 0x90006
 
-# 获取EGA/VGA数据，依次存放在0x90008, 0x9000a,  0x9000c处
+# ��ȡEGA/VGA���ݣ����δ����0x90008, 0x9000a,  0x9000c��
 # check for EGA/VGA and some config parameters
 
 	mov	$0x12, %ah
@@ -77,7 +77,7 @@ _start:
 	mov	%bx, %ds:10
 	mov	%cx, %ds:12
 
-# 获取hd0的数据，存放在0x90080,128个字节偏移处，共16个字节
+# ��ȡhd0�����ݣ������0x90080,128���ֽ�ƫ�ƴ�����16���ֽ�
 # Get hd0 data
 
 	mov	$0x0000, %ax
@@ -90,7 +90,7 @@ _start:
 	rep
 	movsb
 
-# 获取hd1的数据，存放在0x90090,128+16=144个字节偏移处，共16个字节
+# ��ȡhd1�����ݣ������0x90090,128+16=144���ֽ�ƫ�ƴ�����16���ֽ�
 # Get hd1 data
 
 	mov	$0x0000, %ax
@@ -122,13 +122,13 @@ no_disk1:
 is_disk1:
 
 # now we want to move to protected mode ...
-# 现在，我们要进入保护模式，先关掉终端
+# ���ڣ�����Ҫ���뱣��ģʽ���ȹص��ն�
 
 	cli							# no interrupts allowed ! 
 
 # first we move the system to it's rightful place
-# 下面的代码将0x10000处的代码拷贝到0x0000处，供拷贝0x80000个字节512KB，
-# 内核长度最大不能超过512K的假定前提
+# ����Ĵ��뽫0x10000���Ĵ��뿽����0x0000����������0x80000���ֽ�512KB��
+# �ں˳�������ܳ���512K�ļٶ�ǰ��
 #
 #
 	mov	$0x0000, %ax
@@ -148,11 +148,11 @@ do_move:
 
 # then we load the segment descriptors
 # SETUPSEG 0x9020
-# 当前数据段地址为0x9020
-# 加载GDT, IDT描述符表，为保护模式做准备
+# ��ǰ���ݶε�ַΪ0x9020
+# ����GDT, IDT����������Ϊ����ģʽ��׼��
 end_move:
 	mov	$SETUPSEG, %ax			# right, forgot this at first. didn't work :-)
-	mov	%ax, %ds				# DS = 0x9020 以为idt_48是相对DS的偏移地址，在上面的代码中该表了DS，在这个地方恢复
+	mov	%ax, %ds				# DS = 0x9020 ��Ϊidt_48�����DS��ƫ�Ƶ�ַ��������Ĵ����иñ���DS��������ط��ָ�
 	lidt idt_48					# load idt with 0,0
 	lgdt gdt_48					# load gdt with whatever appropriate
 
@@ -214,20 +214,20 @@ end_move:
 # things as simple as possible, we do no register set-up or anything,
 # we let the gnu-compiled 32-bit programs do that. We just jump to
 # absolute address 0x00000, in 32-bit protected mode.
-# 启用32位保护模式，寻址方式发生变化
+# ����32λ����ģʽ��Ѱַ��ʽ�����仯
 
 	mov	$0x0001, %ax			# protected mode (PE) bit
 	lmsw %ax					# This is it!
 #
-# 在实模式中段寄存器的值为段地址
-# 在保护模式中段寄存器称为段选择器，里面存放的值为段选择子
-# 在保护模式中$8表示段选择子的为8，其定义如下
+# ��ʵģʽ�жμĴ�����ֵΪ�ε�ַ
+# �ڱ���ģʽ�жμĴ�����Ϊ��ѡ�����������ŵ�ֵΪ��ѡ����
+# �ڱ���ģʽ��$8��ʾ��ѡ���ӵ�Ϊ8���䶨������
 # +--------------------+---------------+------------------+
-# |    索引（13bits）  | 权限（2bits） | 全局/局部(1bits) |
+# |    ������13bits��  | Ȩ�ޣ�2bits�� | ȫ��/�ֲ�(1bits) |
 # +--------------------+---------------+------------------+
-# $8的二进制为00001000,根据以上可以看出是全局描述符（1），最高权限（00），索引为1
+# $8�Ķ�����Ϊ00001000,�������Ͽ��Կ�����ȫ����������1�������Ȩ�ޣ�00��������Ϊ1
 #
-# 根据后面的全局描述符表gdt可以知道，此处是代码段，基地址为0，也是Image模块的Head的地址
+# ���ݺ����ȫ����������gdt����֪�����˴��Ǵ���Σ�����ַΪ0��Ҳ��Imageģ���Head�ĵ�ַ
 #
 	ljmp $8, $0					# jmp offset 0 of code segment 0 in gdt
 
@@ -241,7 +241,7 @@ empty_8042:
 	jnz	empty_8042				# yes - loop
 	ret
 #
-# 从0地址开始的两个段，数据段和代码段，基地址为0，长度为8MB
+# ��0��ַ��ʼ�������Σ����ݶκʹ���Σ�����ַΪ0������Ϊ8MB
 #
 gdt:
 	.word	0,0,0,0				# dummy
@@ -261,11 +261,11 @@ idt_48:
 	.word	0,0					# idt base=0L
 
 #
-# 0x800表示限制大小在0x800
-# 512+gdt可表示0x200+gdt，表示setup模块所在的的地址+gdt偏移，也就是gdt存放数据信息
-# LGDT, LIDT指令后面根据地址是线性地址，这两个指令是仅有的能够加载线性地址的指令
-# 也就是说不管段寄存器是什么值，都看作0，这两个指令通过在实模式中使用
-# 以便于处理器在切换到保护模式之前进行初始化
+# 0x800��ʾ���ƴ�С��0x800
+# 512+gdt�ɱ�ʾ0x200+gdt����ʾsetupģ�����ڵĵĵ�ַ+gdtƫ�ƣ�Ҳ����gdt���������Ϣ
+# LGDT, LIDTָ�������ݵ�ַ�����Ե�ַ��������ָ���ǽ��е��ܹ��������Ե�ַ��ָ��
+# Ҳ����˵���ܶμĴ�����ʲôֵ��������0��������ָ��ͨ����ʵģʽ��ʹ��
+# �Ա��ڴ��������л�������ģʽ֮ǰ���г�ʼ��
 #
 #
 gdt_48:

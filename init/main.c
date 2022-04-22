@@ -133,19 +133,19 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
  */
 
 /*******************************************************************************
-	ORIG_ROOT_DEV为0x901FC，由于在前面的程序中回见bootsect程序拷贝到0x90000处，
-	bootsect的508地址存放的时根设备的编号301，0x1fc=508，所有此处存放的是根设备
-	的设备号;
-	DRIVE_INFO存放的是第一个硬盘信息
-	EXT_MEM_K系统从1MB开始的扩展内存数值(KB)，复习一下实模式下最多访问1MB空间
-	memory_end & 0xffff000进行内存对齐，我们看到后面有3个0，一共12位，因此我们
-	知道内核要求页对齐即4KB对其
+	ORIG_ROOT_DEVΪ0x901FC��������ǰ��ĳ����лؼ�bootsect���򿽱���0x90000����
+	bootsect��508��ַ��ŵ�ʱ���豸�ı��301��0x1fc=508�����д˴���ŵ��Ǹ��豸
+	���豸��;
+	DRIVE_INFO��ŵ��ǵ�һ��Ӳ����Ϣ
+	EXT_MEM_Kϵͳ��1MB��ʼ����չ�ڴ���ֵ(KB)����ϰһ��ʵģʽ��������1MB�ռ�
+	memory_end & 0xffff000�����ڴ���룬���ǿ���������3��0��һ��12λ���������
+	֪���ں�Ҫ��ҳ���뼴4KB����
 
-	我们根据代码看到如果硬盘大于16MB，则内存为16MB,
-	如果内存大于12MB, buffer_memory_end为4MB
-	如果内存大于6MB，buffer_memory_end为2MB
-	否则buffer_memory_end为1M
-	memory_end最多16MB
+	���Ǹ��ݴ��뿴�����Ӳ�̴���16MB�����ڴ�Ϊ16MB,
+	����ڴ����12MB, buffer_memory_endΪ4MB
+	����ڴ����6MB��buffer_memory_endΪ2MB
+	����buffer_memory_endΪ1M
+	memory_end���16MB
 *******************************************************************************/
  	ROOT_DEV = ORIG_ROOT_DEV;
  	drive_info = DRIVE_INFO;
@@ -164,8 +164,8 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	main_memory_start += rd_init(main_memory_start, RAMDISK_SIZE*1024);
 #endif
 /*******************************************************************************
-	创建mem_map数组，并将main_memory_start到memory_end之间的内存
-	以4KB为一组，进行创建
+	����mem_map���飬����main_memory_start��memory_end֮����ڴ�
+	��4KBΪһ�飬���д���
 *******************************************************************************/
 	mem_init(main_memory_start,memory_end);
 	trap_init();
@@ -194,20 +194,20 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 	show_mem();
 
 	/*
-	 * sti允许中断
+	 * sti�����ж�
 	 *
 	 */	
 	sti();
 	/*
-	 执行完move_to_user_mode函数后，程序会手工切到task0执行，测代码段和数据段
-	 和内核一致，堆栈也使用了内核堆栈，运行权限变成3, 因此我们可以看出Linux中
-	 使用0和3权限
-	 具体可以查看move_to_user_mode分析
+	 ִ����move_to_user_mode�����󣬳�����ֹ��е�task0ִ�У������κ����ݶ�
+	 ���ں�һ�£���ջҲʹ�����ں˶�ջ������Ȩ�ޱ��3, ������ǿ��Կ���Linux��
+	 ʹ��0��3Ȩ��
+	 ������Բ鿴move_to_user_mode����
  	*/
 	move_to_user_mode();
 
 	/*	
-     fork程序是一个系统调用，使用_syscall0进程展开生成，0表示没有参数
+     fork������һ��ϵͳ���ã�ʹ��_syscall0����չ�����ɣ�0��ʾû�в���
      
      #define _syscall0(type,name) \
      	type name(void) \
@@ -221,7 +221,7 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
      	errno = -__res; \
      	return -1; \
      
-     根据前面的定义static inline _syscall0(int,fork) 展开
+     ����ǰ��Ķ���static inline _syscall0(int,fork) չ��
      
      int fork() {
      	register eax __ret;
@@ -232,22 +232,22 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
      	error = - __res
      	return -1
      }
-     INT 0x80是软中断函数，其调用流程为:
-     CPU通过中断向量0x80找到对应的描述符，此描述符包含了段选择子和偏移地址已经DPL
-     CPU检查当前的DPL是否小于描述符的DPL
-     CPU会从当前TSS段中找到中断处理程序的栈选择子和栈指针作为新的栈地址(tss.ss0, tss.esp0)
-     如果DPL发生变化则将当前的SS, ESP, EFLAGS, CS, EIP压入新的栈中
-     如果DPL没有发生变化则将EFLAGS, CS, EIP压如新的栈中
-     CPU从中断描述符中取CS:EIP作为新的运行地址
+     INT 0x80�����жϺ��������������Ϊ:
+     CPUͨ���ж�����0x80�ҵ���Ӧ�����������������������˶�ѡ���Ӻ�ƫ�Ƶ�ַ�Ѿ�DPL
+     CPU��鵱ǰ��DPL�Ƿ�С����������DPL
+     CPU��ӵ�ǰTSS�����ҵ��жϴ��������ջѡ���Ӻ�ջָ����Ϊ�µ�ջ��ַ(tss.ss0, tss.esp0)
+     ���DPL�����仯�򽫵�ǰ��SS, ESP, EFLAGS, CS, EIPѹ���µ�ջ��
+     ���DPLû�з����仯��EFLAGS, CS, EIPѹ���µ�ջ��
+     CPU���ж���������ȡCS:EIP��Ϊ�µ����е�ַ
      
-     fork执行完毕后是进程1，此时进程0和进程1使用相同的用户空间栈，
-     为了进程之间互不影响因此
-     暂时不使用栈，函数以内联的形式进行调用，试想一下
-     如果以函数调用的形成当fork时发生切换，系统将当前的SS, SP压栈，
-     此时pause进程也将SS, SP压栈
-     pause的堆栈数据会覆盖fork的堆栈数据，使fork函数返回到pause函数这里，
-     从而init不能执行
-     同理，也可能导致pause进程执行到init程序里
+     forkִ����Ϻ��ǽ���1����ʱ����0�ͽ���1ʹ����ͬ���û��ռ�ջ��
+     Ϊ�˽���֮�以��Ӱ�����
+     ��ʱ��ʹ��ջ����������������ʽ���е��ã�����һ��
+     ����Ժ������õ��γɵ�forkʱ�����л���ϵͳ����ǰ��SS, SPѹջ��
+     ��ʱpause����Ҳ��SS, SPѹջ
+     pause�Ķ�ջ���ݻḲ��fork�Ķ�ջ���ݣ�ʹfork�������ص�pause�������
+     �Ӷ�init����ִ��
+     ͬ����Ҳ���ܵ���pause����ִ�е�init������
 	*/
 	if (!fork()) {		/* we count on this going ok */
 		init();

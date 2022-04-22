@@ -209,7 +209,7 @@ int free_page_tables(struct task_struct * tsk)
 		return 1;
 	}
 	
-	tsk->tss.cr3 = (unsigned long) 0;
+	tsk->tss.cr3 = (unsigned long) swapper_pg_dir;
 	if (tsk == current)
 		__asm__ __volatile__("movl %0,%%cr3"::"a" (tsk->tss.cr3));
 		

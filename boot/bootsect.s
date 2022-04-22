@@ -1,13 +1,13 @@
 # 
-# BIOS系统调用
-# 80386在实模式下虽然是16位的地址，但是经过段映射后可以形成20位的地址共寻址1MB的地址空间
-# BOIS会在地址0处建立1KB字节的中断向量表，每个中断向量使用4个字节的空间，
-# 前两个字节为段地址，后两个字节为偏移地址，因此一共256个中断向量
-# 所谓BIOS调用就是使用BIOS的中断功能来执行一些用户想要的操作
+# BIOSϵͳ����
+# 80386��ʵģʽ����Ȼ��16λ�ĵ�ַ�����Ǿ�����ӳ�������γ�20λ�ĵ�ַ��Ѱַ1MB�ĵ�ַ�ռ�
+# BOIS���ڵ�ַ0������1KB�ֽڵ��ж���������ÿ���ж�����ʹ��4���ֽڵĿռ䣬
+# ǰ�����ֽ�Ϊ�ε�ַ���������ֽ�Ϊƫ�Ƶ�ַ�����һ��256���ж�����
+# ��νBIOS���þ���ʹ��BIOS���жϹ�����ִ��һЩ�û���Ҫ�Ĳ���
 # 
-# 在AT汇编里，EAX表示32位寄存器，AX表示16位寄存器，AH，AL表示8位寄存器
+# ��AT����EAX��ʾ32λ�Ĵ�����AX��ʾ16λ�Ĵ�����AH��AL��ʾ8λ�Ĵ���
 #
-# .code16 表示后面是16位的汇编代码
+# .code16 ��ʾ������16λ�Ļ�����
 #
 #
 	.code16
@@ -18,23 +18,23 @@
 # 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 # versions of linux
 #
-# SYSSIZE是要加载的节数（16个字节为1节）0x3000*16也就是192KB的大小，
-# 对于当前的内核来说已经足够了
+# SYSSIZE��Ҫ���صĽ�����16���ֽ�Ϊ1�ڣ�0x3000*16Ҳ����192KB�Ĵ�С��
+# ���ڵ�ǰ���ں���˵�Ѿ��㹻��
 #
 	.equ SYSSIZE, 0x3000
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
 #
-# 编译系统编译的镜像存放格式为：
+# ����ϵͳ����ľ����Ÿ�ʽΪ��
 # | 512 bootsect | 512*4 setup | system(head,kernel} |
 #
-# BOIS会将启动设备的前512字节拷贝至内存的0x7c00处，并跳转到此处运行，
-# bootsect程序主要将自己（512个字节）搬移到0x90000(576K)处，
-# 从启动设备继续读取setup模块，存放在自己后面，也就是0x90200地址处（576.5K）处
-# 此时bootsect和setup的结尾地址为0x90a00
-# bootsect和setup模块一共占用2.5KB的空间，其中bootsect占用0.5KB，setup占用2KB
+# BOIS�Ὣ�����豸��ǰ512�ֽڿ������ڴ��0x7c00��������ת���˴����У�
+# bootsect������Ҫ���Լ���512���ֽڣ����Ƶ�0x90000(576K)����
+# �������豸������ȡsetupģ�飬������Լ����棬Ҳ����0x90200��ַ����576.5K����
+# ��ʱbootsect��setup�Ľ�β��ַΪ0x90a00
+# bootsect��setupģ��һ��ռ��2.5KB�Ŀռ䣬����bootsectռ��0.5KB��setupռ��2KB
 #
-# 以上的数据读取都使用了BIOS调用
+# ���ϵ����ݶ�ȡ��ʹ����BIOS����
 #
 #
 #
@@ -81,19 +81,19 @@
 #
 # the code will be copy to 0x7c00 and running
 #
-# 我注释了这句话，系统仍然可以工作
+# ��ע������仰��ϵͳ��Ȼ���Թ���
 # ljmp    $BOOTSEG, $_start
 # 
 #
-# 系统启动后，BIOS会将启动设备的前512字节拷贝至0x7c00处并运行
-# 在编译bootsect模块中，我们发现了链接参数-Ttext 0 -e _start表示起始地址为0，程序入口为_start
+# ϵͳ������BIOS�Ὣ�����豸��ǰ512�ֽڿ�����0x7c00��������
+# �ڱ���bootsectģ���У����Ƿ��������Ӳ���-Ttext 0 -e _start��ʾ��ʼ��ַΪ0���������Ϊ_start
 # 
-# 设置DS为0x07c0，设置ES为0x9000
-# 将SI和DI清零
-# movsw将DS:SI地址处的数据拷贝到ES:DI处，SI和DI会自动递增，拷贝的次数存放在CX寄存器中
-# 因此下面的代码意思是，
-# 将0x7c00的数据拷贝至0x90000(576K)处, 每次拷贝2个字节，共拷贝256次，512个字节
-# 也就是将bootsect从0x07c00拷贝到0x90000(576K)处
+# ����DSΪ0x07c0������ESΪ0x9000
+# ��SI��DI����
+# movsw��DS:SI��ַ�������ݿ�����ES:DI����SI��DI���Զ������������Ĵ��������CX�Ĵ�����
+# �������Ĵ�����˼�ǣ�
+# ��0x7c00�����ݿ�����0x90000(576K)��, ÿ�ο���2���ֽڣ�������256�Σ�512���ֽ�
+# Ҳ���ǽ�bootsect��0x07c00������0x90000(576K)��
 #
 _start:
 	mov	$BOOTSEG, %ax				# BOOTSEG 0x07c0
@@ -106,8 +106,8 @@ _start:
 	rep								# execute repeat util CX == 0, total 512 bytes
 	movsw							# copy 2Bytes from DS:SI(0x07c00) to ES:DI(0x90000) 512 bytes
 
-# 跳转至$INITSEC:go处运行，INITSEG定义为0x9000
-# 因此也就是跳转至下面的标号“go”的地方开始运行，这条语句会将CS设置为INITSEG
+# ��ת��$INITSEC:go�����У�INITSEG����Ϊ0x9000
+# ���Ҳ������ת������ı�š�go���ĵط���ʼ���У��������ὫCS����ΪINITSEG
 #
 #	
 	ljmp $INITSEG, $go				# jump 0x9000:go
@@ -116,9 +116,9 @@ go:	mov	%cs, %ax					# CS = 0x9000
 	mov	%ax, %es					# ES = 0x9000
 	mov	%ax, %ss					# SS = 0x9000, put stack top at 0x9ff00
 #
-# 此处设置栈顶地址为0x9ff00
-# 因为bootsec占用512字节，setup占用512*4个字节，从0x90000开始存放bootsect和setup，末尾地址为0x90a00
-# 而x86的栈为FD栈，满减栈，因此从0x90a00到0x9ff00的空间都是可以用，栈顶指针初始值为0x9ff00
+# �˴�����ջ����ַΪ0x9ff00
+# ��Ϊbootsecռ��512�ֽڣ�setupռ��512*4���ֽڣ���0x90000��ʼ���bootsect��setup��ĩβ��ַΪ0x90a00
+# ��x86��ջΪFDջ������ջ����˴�0x90a00��0x9ff00�Ŀռ䶼�ǿ����ã�ջ��ָ���ʼֵΪ0x9ff00
 #
 	mov	$0xff00, %sp				# x86 FD stack [full decrease stack]
 	                                # we will copy 4 sectors(2048) form boot device
@@ -127,11 +127,11 @@ go:	mov	%cs, %ax					# CS = 0x9000
 # load the setup-sectors directly after the bootblock.
 # Note that 'es' is already set up.
 #
-# 下面一段代码使用BOIS系统调用从第二个扇区读，共读取4个扇区，2048个字节，我们
-# 通过前面的注释可是直到setup模块，刚好占用4个扇区，下面代码的左右就是从第二个
-# 扇区开始读取数据，存放在当前数据段的0x200处，也就是0x90200处，读取成功后挑战至
-# ok_load_setup处开始运行，读取失败后继续进行尝试读取
-# 目前我们只需知道其含义即可，具体可参考<Linux内核完全注释的讲解>
+# ����һ�δ���ʹ��BOISϵͳ���ôӵڶ���������������ȡ4��������2048���ֽڣ�����
+# ͨ��ǰ���ע�Ϳ���ֱ��setupģ�飬�պ�ռ��4�������������������Ҿ��Ǵӵڶ���
+# ������ʼ��ȡ���ݣ�����ڵ�ǰ���ݶε�0x200����Ҳ����0x90200������ȡ�ɹ�����ս��
+# ok_load_setup����ʼ���У���ȡʧ�ܺ�������г��Զ�ȡ
+# Ŀǰ����ֻ��֪���京�弴�ɣ�����ɲο�<Linux�ں���ȫע�͵Ľ���>
 #
 load_setup:
 	mov	$0x0000, %dx				# drive 0, head 0
@@ -159,7 +159,7 @@ ok_load_setup:
 	mov	$INITSEG, %ax
 	mov	%ax, %es					# restore ES
 #
-# 使用系统调用打印：Loading system ...
+# ʹ��ϵͳ���ô�ӡ��Loading system ...
 # Print some inane message
 	mov	$0x03, %ah					# read cursor pos
 	xor	%bh, %bh
@@ -171,10 +171,10 @@ ok_load_setup:
 	mov	$0x1301, %ax				# write string, move cursor
 	int	$0x10
 
-# 读取SYS模块，存放在地址0x10000（64K）开始的地方，
-# 根据前面的SYSSIZE定义我们知道一共读取0x3000*16个字节也就是192KB的内容
-# 对于我们来说已经够了，我们可以计算出当前的最大地址为64 + 192 = 256KB，
-# 不能覆盖到bootsect和setup模块的起始地址
+# ��ȡSYSģ�飬����ڵ�ַ0x10000��64K����ʼ�ĵط���
+# ����ǰ���SYSSIZE��������֪��һ����ȡ0x3000*16���ֽ�Ҳ����192KB������
+# ����������˵�Ѿ����ˣ����ǿ��Լ������ǰ������ַΪ64 + 192 = 256KB��
+# ���ܸ��ǵ�bootsect��setupģ�����ʼ��ַ
 # ok, we've written the message, now
 # we want to load the system (at 0x10000)
 
@@ -206,14 +206,14 @@ root_defined:
 	#seg cs
 	mov	%ax, %cs:root_dev+0
 # 
-# 当所有的模块都加载完成后，跳转到0x09200地址处运行，我们知道此处是setup的地址
-# 跳转到 SETUPSEG的 0 偏移开始运行，SETUPSEG为0x9020，即地址0x90200，
+# �����е�ģ�鶼������ɺ���ת��0x09200��ַ�����У�����֪���˴���setup�ĵ�ַ
+# ��ת�� SETUPSEG�� 0 ƫ�ƿ�ʼ���У�SETUPSEGΪ0x9020������ַ0x90200��
 #
-# 目前，
-# bootsect在0x90000地址处共512字节
-# setup在0x90200地址处共2KB
-# system模块在0x10000(64KB)地址处共192KB字节
-# 以上都在实模式的1MB访问空间内
+# Ŀǰ��
+# bootsect��0x90000��ַ����512�ֽ�
+# setup��0x90200��ַ����2KB
+# systemģ����0x10000(64KB)��ַ����192KB�ֽ�
+# ���϶���ʵģʽ��1MB���ʿռ���
 #
 # after that (everyting loaded), we jump to
 # the setup-routine loaded directly after

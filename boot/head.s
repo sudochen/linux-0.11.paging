@@ -13,11 +13,11 @@
  * the page directory.
  */
 .text
-.globl startup_32,idt,gdt,pg_dir,tmp_floppy_area,floppy_track_buffer
+.globl startup_32,idt,gdt,swapper_pg_dir,tmp_floppy_area,floppy_track_buffer
 /*
  * swapper_pg_dir is the main page directory, address 0x00000000
  */
-pg_dir:
+swapper_pg_dir:
 startup_32:
 	cld
 	movl $0x10,%eax
@@ -210,14 +210,14 @@ setup_paging:
 	cld;rep;stosl
 	
     /* Identity-map the kernel in low 4MB memory for ease of transition */
-	movl $pg0+7,pg_dir		    /* set present bit/user r/w */
+	movl $pg0+7,swapper_pg_dir		    /* set present bit/user r/w */
 
 	
     /* But the real place is at 0xC0000000 */
-	movl $pg0+7,pg_dir+3072	    /* set present bit/user r/w */
-	movl $pg1+7,pg_dir+3076	    /*  --------- " " --------- */
-	movl $pg2+7,pg_dir+3080	    /*  --------- " " --------- */
-	movl $pg3+7,pg_dir+3084	    /*  --------- " " --------- */
+	movl $pg0+7,swapper_pg_dir+3072	    /* set present bit/user r/w */
+	movl $pg1+7,swapper_pg_dir+3076	    /*  --------- " " --------- */
+	movl $pg2+7,swapper_pg_dir+3080	    /*  --------- " " --------- */
+	movl $pg3+7,swapper_pg_dir+3084	    /*  --------- " " --------- */
 	
 	movl $pg3+4092,%edi
 	movl $0xfff007,%eax		    /*  16Mb - 4096 + 7 (r/w user,p) */
