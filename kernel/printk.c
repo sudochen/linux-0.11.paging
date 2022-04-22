@@ -40,12 +40,17 @@ int printk(const char *fmt, ...)
 	j=timestamp("[%010d] ", jiffies);
 	i=vsprintf(buf+j,fmt,args) + j;
 	va_end(args);
+	
 	__asm__("push %%fs\n\t"
 		"push %%ds\n\t"
 		"pop %%fs\n\t"
 		"pushl %0\n\t"
 		"pushl $buf\n\t"
+#ifdef CONFIG_VGA
+		"pushl $0\n\t"
+#else
 		"pushl $1\n\t"
+#endif
 		"call tty_write\n\t"
 		"addl $8,%%esp\n\t"
 		"popl %0\n\t"

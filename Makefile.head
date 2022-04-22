@@ -59,3 +59,8 @@ ifeq ($(OS), Darwin)
   STRIP   = i386-elf-strip
   OBJCOPY = i386-elf-objcopy
 endif
+
+ifeq (${VGA}, 1)
+CFLAGS	+= -DCONFIG_VGA
+CPP	+= -DCONFIG_VGA
+endif

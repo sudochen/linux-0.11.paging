@@ -65,7 +65,11 @@ e0_e1:	inb $0x61,%al
 	outb %al,$0x61
 	movb $0x20,%al
 	outb %al,$0x20
+#ifdef CONFIG_VGA
+    pushl $0
+#else
 	pushl $1
+#endif
 	call do_tty_interrupt
 	addl $4,%esp
 	pop %es
