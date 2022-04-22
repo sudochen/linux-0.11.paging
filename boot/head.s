@@ -141,9 +141,9 @@ after_page_tables:
 	mov %ax,%fs
 	mov %ax,%gs
 	lss stack_start,%esp
-	pushl $0		# These are the parameters to main :-)
-	pushl $0
-	pushl $0
+	pushl $8		# These are the parameters to main :-)
+	pushl $7
+	pushl $6
 	cld			# gcc2 wants the direction flag cleared at all times
 	call main
 L6:
