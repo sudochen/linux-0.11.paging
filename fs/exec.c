@@ -85,11 +85,11 @@ static int count(char ** argv)
 	if ((tmp = argv)) {
 
 		/* 
-		 * argvçš„æ ¼å¼ä¸º
+		 * argvµÄ¸ñÊ½Îª
 		 * static char * argv[] = { "-/bin/sh",NULL };
-		 * argvä¸ºæ•°ç»„çš„åœ°å€
-		 * æ‰€ä»¥è¿™ä¸ªæ„æ€æ˜¯
-		 * ä»fs:argvå–æ•°æ®ä½œä¸ºåœ°å€ï¼Œå¦‚æœä¸ä¸ºNULLåˆ™è®¡æ•°++
+		 * argvÎªÊı×éµÄµØÖ·
+		 * ËùÒÔÕâ¸öÒâË¼ÊÇ
+		 * ´Ófs:argvÈ¡Êı¾İ×÷ÎªµØÖ·£¬Èç¹û²»ÎªNULLÔò¼ÆÊı++
 		 *
 		 *
 		 */
@@ -127,16 +127,16 @@ static unsigned long copy_strings(int argc,char ** argv,unsigned long *page,
 	if (!p)
 		return 0;	/* bullet-proofing */
 
-	/* dså†…æ ¸ç©ºé—´ new_fs
-	 * fsç”¨æˆ·ç©ºé—´ old_fs
+	/* dsÄÚºË¿Õ¼ä new_fs
+	 * fsÓÃ»§¿Õ¼ä old_fs
 	 *
 	 */
 	new_fs = get_ds();
 	old_fs = get_fs();
 
 
-	/* å¦‚æœæ˜¯ä»å†…æ ¸æ‹·è´åˆ°å†…æ ¸ç©ºé—´ï¼Œè®¾ç½®fsä¸ºå†…æ ¸æ•°æ®æ®µé€‰æ‹©å­
-	 * åœ¨è¿™é‡Œæˆ‘ä»¬åˆ†æå¯ä»¥åªè€ƒè™‘from_kmem = 0çš„æƒ…å†µï¼Œ
+	/* Èç¹ûÊÇ´ÓÄÚºË¿½±´µ½ÄÚºË¿Õ¼ä£¬ÉèÖÃfsÎªÄÚºËÊı¾İ¶ÎÑ¡Ôñ×Ó
+	 * ÔÚÕâÀïÎÒÃÇ·ÖÎö¿ÉÒÔÖ»¿¼ÂÇfrom_kmem = 0µÄÇé¿ö£¬
 	 *
 	 */
 	if (from_kmem==2)
@@ -146,7 +146,7 @@ static unsigned long copy_strings(int argc,char ** argv,unsigned long *page,
 		if (from_kmem == 1)
 			set_fs(new_fs);
 		/*
-		 * æˆ‘ä»¬å¯ä»¥çœ‹åˆ°è¿™å¥è¯æ˜¯è·å–æœ€åä¸€ä¸ªå‚æ•°çš„èµ·å§‹åœ°å€
+		 * ÎÒÃÇ¿ÉÒÔ¿´µ½Õâ¾ä»°ÊÇ»ñÈ¡×îºóÒ»¸ö²ÎÊıµÄÆğÊ¼µØÖ·
 		 */
 		if (!(tmp = (char *)get_fs_long(((unsigned long *)argv)+argc)))
 			panic("argc is wrong");
@@ -154,14 +154,14 @@ static unsigned long copy_strings(int argc,char ** argv,unsigned long *page,
 			set_fs(old_fs);
 		len=0;		/* remember zero-padding */
 		/*
-		 * è·å–å‚æ•°å­—ç¬¦ä¸²çš„é•¿åº¦
+		 * »ñÈ¡²ÎÊı×Ö·û´®µÄ³¤¶È
 		 *
 		 */
 		do {
 			len++;
 		} while (get_fs_byte(tmp++));
-		/* pä¸º128KB -4 å¦‚æœé•¿åº¦å¤§äº128KB - 4 åˆ™è¿”å›ï¼Œ
-		 * æ ¹æ®æ³¨é‡Šï¼Œæˆ‘ä»¬æœ€å¤šæ‹·è´128KB-4é•¿åº¦çš„å‚æ•°
+		/* pÎª128KB -4 Èç¹û³¤¶È´óÓÚ128KB - 4 Ôò·µ»Ø£¬
+		 * ¸ù¾İ×¢ÊÍ£¬ÎÒÃÇ×î¶à¿½±´128KB-4³¤¶ÈµÄ²ÎÊı
 		 *
 		 *
 		 */
@@ -212,7 +212,7 @@ static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 	/* make sure fs points to the NEW data segment */
 	__asm__("pushl $0x17\n\tpop %%fs"::);
 
-	/* æŒ‡å‘64MBçš„æœ€åä¸€ä¸ªå­—èŠ‚
+	/* Ö¸Ïò64MBµÄ×îºóÒ»¸ö×Ö½Ú
 	 *
 	 */
 	data_base += data_limit;
@@ -220,19 +220,19 @@ static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 	for (i=MAX_ARG_PAGES-1 ; i>=0 ; i--) {
 		
 		/*
-		 * data_base 64MBçš„åœ°å€ç¬¬ä¸€ä¸ªé¡µ
+		 * data_base 64MBµÄµØÖ·µÚÒ»¸öÒ³
 		 */
 		data_base -= PAGE_SIZE;
 
-		/* å¦‚æœpage[i]æœ‰æ•ˆï¼Œä¹Ÿå°±æ˜¯å‚æ•°æœ‰æ•ˆ
-		 * åˆ™å°†æ­¤ç‰©ç†é¡µæ˜ å°„åˆ°data_baseåœ°å€å¤„
+		/* Èç¹ûpage[i]ÓĞĞ§£¬Ò²¾ÍÊÇ²ÎÊıÓĞĞ§
+		 * Ôò½«´ËÎïÀíÒ³Ó³Éäµ½data_baseµØÖ·´¦
 		 */
 		if (page[i]) {
 			put_page(page[i], data_base);
 		}
 	}
 	/*
-	 * è¿”å›64M
+	 * ·µ»Ø64M
 	 */
 	return data_limit;
 }
@@ -254,21 +254,21 @@ int do_execve(unsigned long * eip,long tmp,char * filename,
 	unsigned long p=PAGE_SIZE*MAX_ARG_PAGES-4;
 
 	/* 
-	 * eip[i]è¡¨ç¤ºæ ˆä¸­è¿”å›çš„csåœ°å€
-	 * å…¶ä¸­çš„é€‰æ‹©å­ä¸èƒ½ä¸ºå†…æ ¸é€‰æ‹©å­ï¼Œä¹Ÿå°±æ˜¯è¯´å†…æ ¸ç¨‹åºä¸èƒ½è°ƒç”¨æ­¤å‡½æ•°
+	 * eip[i]±íÊ¾Õ»ÖĞ·µ»ØµÄcsµØÖ·
+	 * ÆäÖĞµÄÑ¡Ôñ×Ó²»ÄÜÎªÄÚºËÑ¡Ôñ×Ó£¬Ò²¾ÍÊÇËµÄÚºË³ÌĞò²»ÄÜµ÷ÓÃ´Ëº¯Êı
 	 *
 	 */
 	if ((0xffff & eip[1]) != 0x000f)
 		panic("execve called from supervisor mode");
 
 	/* 
-	 * åˆå§‹åŒ–å‚æ•°å’Œç¯å¢ƒçš„é¡µè¡¨
+	 * ³õÊ¼»¯²ÎÊıºÍ»·¾³µÄÒ³±í
 	 *
 	 */
 	for (i=0 ; i<MAX_ARG_PAGES ; i++)	/* clear page-table */
 		page[i]=0;
 	/*
-	 * è·å–å¯æ‰§è¡Œæ–‡ä»¶çš„å¯¹åº”çš„inode 
+	 * »ñÈ¡¿ÉÖ´ĞĞÎÄ¼şµÄ¶ÔÓ¦µÄinode 
 	 *
 	 */
 	if (!(inode=namei(filename)))		/* get executables inode */
@@ -282,13 +282,13 @@ int do_execve(unsigned long * eip,long tmp,char * filename,
 	
 restart_interp:
 	/*
-	 * å¿…é¡»æ˜¯ä¸€ä¸ªå¸¸è§„æ–‡ä»¶
+	 * ±ØĞëÊÇÒ»¸ö³£¹æÎÄ¼ş
 	 */
 	if (!S_ISREG(inode->i_mode)) {	/* must be regular file */
 		retval = -EACCES;
 		goto exec_error2;
 	}
-	/* æƒé™æ£€æŸ¥
+	/* È¨ÏŞ¼ì²é
 	 *
 	 */
 	i = inode->i_mode;
@@ -304,19 +304,19 @@ restart_interp:
 		goto exec_error2;
 	}
 	/*
-	 * è¯»å–ä¸€å—æ•°æ®
+	 * ¶ÁÈ¡Ò»¿éÊı¾İ
 	 */
 	if (!(bh = bread(inode->i_dev,inode->i_zone[0]))) {
 		retval = -EACCES;
 		goto exec_error2;
 	}
 	/*
-	 * è·å–æ–‡ä»¶å¤´éƒ¨
+	 * »ñÈ¡ÎÄ¼şÍ·²¿
 	 */
 	ex = *((struct exec *) bh->b_data);	/* read exec-header */
 
 	/*
-	 * å¦‚æœæ˜¯è„šæœ¬åˆ™æ‰§è¡Œè„šæœ¬
+	 * Èç¹ûÊÇ½Å±¾ÔòÖ´ĞĞ½Å±¾
 	 */
 	if ((bh->b_data[0] == '#') && (bh->b_data[1] == '!') && (!sh_bang)) {
 		/*
@@ -425,9 +425,9 @@ restart_interp:
 	if (last_task_used_math == current)
 		last_task_used_math = NULL;
 	current->used_math = 0;
-	/* change_ldtå°†å‚æ•°æ˜ å°„åˆ°äº†é¡¶ç«¯å¹¶è¿”å›64MBçš„åœ°å€
-	 * ç„¶åå‡å»MAX_ARG_PAGES*PAGE_SIZEå°†åœ°å€ä¿®æ”¹ä¸ºå‚æ•°çš„æœ€å¼€å§‹ï¼Œç„¶ååœ¨åŠ ä¸Šåç§»p
-	 * æ­¤æ—¶pçš„å€¼åœ¨64MBçš„å‚æ•°å¤„
+	/* change_ldt½«²ÎÊıÓ³Éäµ½ÁË¶¥¶Ë²¢·µ»Ø64MBµÄµØÖ·
+	 * È»ºó¼õÈ¥MAX_ARG_PAGES*PAGE_SIZE½«µØÖ·ĞŞ¸ÄÎª²ÎÊıµÄ×î¿ªÊ¼£¬È»ºóÔÚ¼ÓÉÏÆ«ÒÆp
+	 * ´ËÊ±pµÄÖµÔÚ64MBµÄ²ÎÊı´¦
 	 *
 	 */
 	p += change_ldt(ex.a_text,page)-MAX_ARG_PAGES*PAGE_SIZE;
