@@ -64,3 +64,8 @@ ifeq (${VGA}, 1)
 CFLAGS	+= -DCONFIG_VGA
 CPP	+= -DCONFIG_VGA
 endif
+
+ifeq (${TSS}, 1)
+CFLAGS	+= -DCONFIG_SWITCH_TSS
+CPP	+= -DCONFIG_SWITCH_TSS
+endif

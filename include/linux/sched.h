@@ -144,7 +144,6 @@ extern struct task_struct *last_task_used_math;
 extern struct task_struct *current;
 extern long volatile jiffies;
 extern long startup_time;
-extern long switch_stack;
 
 #define CURRENT_TIME (startup_time+jiffies/HZ)
 
