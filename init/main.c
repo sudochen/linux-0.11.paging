@@ -179,18 +179,11 @@ void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
 #ifdef RAMDISK_SIZE
 	printk("ramdisk size is %dMB", RAMDISK_SIZE/1024);
 #endif
-	printk("kernel time init\n");
 	time_init();
-	printk("kernel sched init\n");
 	sched_init();
-	printk("task switch use %s\n", switch_stack ? "kernel stack" : "TSS");
-	printk("kernel buffer init\n");
 	buffer_init(buffer_memory_end);
-	printk("kernel hd init\n");
 	hd_init();
-	printk("kernel fp init\n");
 	floppy_init();
-	printk("kernel move to user\n");
 	show_mem();
 
 	/*

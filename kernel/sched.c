@@ -59,12 +59,9 @@ static union task_union init_task = {INIT_TASK,};
 struct tss_struct *tss = &(init_task.task.tss);
 long volatile jiffies=0;
 long startup_time=0;
-struct task_struct *current = &(init_task.task);
-struct task_struct *last_task_used_math = NULL;
-
+struct task_struct * current = &(init_task.task);
+struct task_struct * last_task_used_math = NULL;
 struct task_struct * task[NR_TASKS] = {&(init_task.task), };
-
-long switch_stack = 1;
 
 long user_stack [ PAGE_SIZE>>2 ] ;
 
@@ -151,12 +148,12 @@ void schedule(void)
 	}
 
 	local_irq_restore(flag);
-	
-	if (switch_stack) {
-		switch_to_by_stack((long)pnext, (long)(_LDT(next)), pnext->tss.cr3);
-	} else {
-		switch_to(next);
-	}
+
+#ifdef CONFIG_SWITCH_TSS
+	switch_to(next);
+#else
+	switch_to_by_stack((long)pnext, (long)(_LDT(next)), pnext->tss.cr3);
+#endif
 }
 
 int sys_pause(void)
@@ -429,6 +426,12 @@ void sched_init(void)
 	set_tss_desc(gdt+FIRST_TSS_ENTRY, &(init_task.task.tss));
 	set_ldt_desc(gdt+FIRST_LDT_ENTRY, &(init_task.task.ldt));
 
+#ifdef CONFIG_SWITCH_TSS
+	printk("task switch use TSS\n");
+#else
+	printk("task switch use KERNEL STACK\n");
+#endif
+
 	printk("init_task use GTD %d for TSS\n", FIRST_TSS_ENTRY);
 	printk("init_task use GTD %d for LDT\n", FIRST_LDT_ENTRY);
 	
@@ -485,5 +488,6 @@ void sched_init(void)
 	outb(inb_p(0x21)&~0x01,0x21);
 	printk("Enable system_call\n");
 	set_system_gate(0x80,&system_call);
+	printk("kernel sched init\n");
 }
 
