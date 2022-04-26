@@ -293,14 +293,23 @@ void add_timer(long jiffies, void (*fn)(void))
 	if (!fn)
 		return;
 	cli();
+	/* 
+	 * 如果timer时间小于等于0，立即执行其回掉函数
+	 *
+	 */
 	if (jiffies <= 0)
 		(fn)();
 	else {
+		/*
+		 * 在数组中找到一个可用的timer_list, 如果没有找到则panic
+		 *
+		 */
 		for (p = timer_list ; p < timer_list + TIME_REQUESTS ; p++)
 			if (!p->fn)
 				break;
 		if (p >= timer_list + TIME_REQUESTS)
 			panic("No more time requests free");
+			
 		p->fn = fn;
 		p->jiffies = jiffies;
 		p->next = next_timer;
@@ -330,6 +339,8 @@ void do_timer(long cpl)
 
 	/*
 	 * 增加内核时间或用户时间计数
+	 * 如果是内核态增加stime，否则增加utime
+	 *
 	 */
 	if (cpl)
 		current->utime++;
@@ -350,11 +361,23 @@ void do_timer(long cpl)
 			(fn)();
 		}
 	}
+	
 	if (current_DOR & 0xf0)
 		do_floppy_timer();
-	if ((--current->counter)>0) return;
+
+	if ((--current->counter)>0) 
+		return;
+
 	current->counter=0;
-	if (!cpl) return;
+	/*
+	 * 这句话很重要，也就是如果是在内核态不进行调度，内核否则就涉及一个
+	 * 概念叫内核抢占，因此我们知道，在linux内核程序被中断后，中断推出
+	 * 是一定退出到被中断的地方，但是用户态的程序则可能发生进程切换
+	 *
+	 */
+	if (!cpl) 
+		return;
+		
 	schedule();
 }
 

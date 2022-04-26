@@ -20,6 +20,12 @@
  * Actually only pause and fork are needed inline, so that there
  * won't be any messing with the stack from main(), but we define
  * some others too.
+ *
+ * 在我看来只需要fork或者pause中有一个为inline就可以，通过修改程序也证实可以
+ * 我们想象一下这样的一个场景
+ * fork时将返回地址入栈，启动系统调用，cpu会将
+ *
+ *
  */
 #ifndef K_INLINE
 #define K_INLINE __attribute__((always_inline))
