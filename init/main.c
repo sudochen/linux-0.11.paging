@@ -23,7 +23,8 @@
  *
  * 在我看来只需要fork或者pause中有一个为inline就可以，通过修改程序也证实可以
  * 我们想象一下这样的一个场景
- * fork时将返回地址入栈，启动系统调用，cpu会将
+ * fork时将返回地址入栈，启动系统调用，调用完成后如果发生进程切换
+ * 会导致task0运行，task0运行会将pause的地址入栈，
  *
  *
  */
@@ -82,6 +83,8 @@ extern long startup_time;
 
 /*
  * This is set up by the setup-routine at boot-time
+ * 这些地址可以访问的原因是由于0地址和0xc0000000开始的4MB都映射到同一区域
+ *
  */
 #define EXT_MEM_K (*(unsigned short *)0x90002)
 #define DRIVE_INFO (*(struct drive_info *)0x90080)
@@ -131,7 +134,7 @@ extern int printk(const char * fmt, ...);
 
 struct drive_info { char dummy[32]; } drive_info;
 
-void main(int __a, int __b, int __c)		/* This really IS void, no error here. */
+void start_kernel(int __a, int __b, int __c)		/* This really IS void, no error here. */
 {			/* The startup routine assumes (well, ...) this */
 /*
  * Interrupts are still disabled. Do necessary setups, then

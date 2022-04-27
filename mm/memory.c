@@ -167,7 +167,6 @@ void clear_page_tables(struct task_struct * tsk)
 {
 	int i;
 	unsigned long * page_dir;
-	unsigned long tmp;
 
 	if (!tsk)
 		return;
