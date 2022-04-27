@@ -237,8 +237,10 @@ static void bad_flp_intr(void)
 		floppy_deselect(current_drive);
 		end_request(0);
 	}
-	if (CURRENT->errors > MAX_ERRORS/2)
+	if (CURRENT->errors > MAX_ERRORS/2) {
+		printk("%s\n\r", __func__);
 		reset = 1;
+	}
 	else
 		recalibrate = 1;
 }	
@@ -343,8 +345,10 @@ static void transfer(void)
 static void recal_interrupt(void)
 {
 	output_byte(FD_SENSEI);
-	if (result()!=2 || (ST0 & 0xE0) == 0x60)
+	if (result()!=2 || (ST0 & 0xE0) == 0x60) {
+		printk("%s\n\r", __func__);
 		reset = 1;
+	}
 	else
 		recalibrate = 0;
 	do_fd_request();
@@ -353,8 +357,10 @@ static void recal_interrupt(void)
 void unexpected_floppy_interrupt(void)
 {
 	output_byte(FD_SENSEI);
-	if (result()!=2 || (ST0 & 0xE0) == 0x60)
+	if (result()!=2 || (ST0 & 0xE0) == 0x60) {
+		printk("%s\n\r", __func__);
 		reset = 1;
+	}
 	else
 		recalibrate = 1;
 }

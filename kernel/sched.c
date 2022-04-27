@@ -446,6 +446,7 @@ void sched_init(void)
 	
 	if (sizeof(struct sigaction) != 16)
 		panic("Struct sigaction MUST be 16 bytes");
+	
 	set_tss_desc(gdt+FIRST_TSS_ENTRY, &(init_task.task.tss));
 	set_ldt_desc(gdt+FIRST_LDT_ENTRY, &(init_task.task.ldt));
 
@@ -455,8 +456,8 @@ void sched_init(void)
 	printk("task switch use KERNEL STACK\n");
 #endif
 
-	printk("init_task use GTD %d for TSS\n", FIRST_TSS_ENTRY);
-	printk("init_task use GTD %d for LDT\n", FIRST_LDT_ENTRY);
+	printk("init_task use GTD[%d] for TSS\n", FIRST_TSS_ENTRY);
+	printk("init_task use GTD[%d] for LDT\n", FIRST_LDT_ENTRY);
 	
 /*******************************************************************************
 	此时p为gdt的第6项，也就是说从第六项开始清理gdt为0，每次清理两项

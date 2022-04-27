@@ -145,7 +145,7 @@ after_page_tables:
 	pushl $7
 	pushl $6
 	cld			# gcc2 wants the direction flag cleared at all times
-	call main
+	call start_kernel
 L6:
 	jmp L6			# main should never return here, but
 				# just in case, we know what happens.
