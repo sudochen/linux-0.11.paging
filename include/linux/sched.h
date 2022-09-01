@@ -159,17 +159,19 @@ extern void wake_up(struct task_struct ** p);
 
 #define FIRST_TSS_ENTRY 4
 #define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY+1)
-/*******************************************************************************
-	_TSS(n) ��n��ʾtask�������ǣ����ǿ��Ծ������nΪ0, 
-	_TSS(n) = 100 000 index is 4
-	_LDT(n) = 101 000 index is 5
-	���nΪ1
-	_TSS(1) = 110 000 index is 6
-	_TSS(1) = 111 000 index is 7
-	�������ݿ��Կ���, TSS��LDT�����GDT�У���һ�������������
-*******************************************************************************/
+/* _TSS(n) 表示任务n的TSS段描述子，其地址指向一个在GDT中的TSS段，每个任务都有自己TSS段
+ * _LDT(n) 表示任务n的LDT段描述子，其地址指向一个在GDT中的LDT段，每个任务都有自己LDT段
+ * 如n为0
+ * _TSS(0) = ((unsigned long)0 << 4) + (4 << 3)表示为二进制为0b'00110 000，其index为4
+ * _LDT(0) = ((unsigned long)0 << 4) + (5 << 3)表示为二进制为0b'00101 000，其index为5
+ * 
+ * 
+ */
 #define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))
 #define _LDT(n) ((((unsigned long) n)<<4)+(FIRST_LDT_ENTRY<<3))
+/*
+ * 加载LDT和TSS
+ */
 #define ltr(n) __asm__("ltr %%ax"::"a" (_TSS(n)))
 #define lldt(n) __asm__("lldt %%ax"::"a" (_LDT(n)))
 #define str(n) \

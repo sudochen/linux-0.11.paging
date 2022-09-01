@@ -202,7 +202,12 @@ void do_reserved(long esp, long error_code)
 void trap_init(void)
 {
 	int i;
-
+	/* 
+	 * set_trap_gate è®¾ç½®é™·é˜±é—¨
+	 * set_system_gate è®¾ç½®ç³»ç»Ÿé—¨
+	 *
+	 * 
+	 */
 	set_trap_gate(0,&divide_error);
 	set_trap_gate(1,&debug);
 	set_trap_gate(2,&nmi);
@@ -223,11 +228,9 @@ void trap_init(void)
 	for (i=17;i<48;i++)
 		set_trap_gate(i,&reserved);
 	set_trap_gate(45,&irq13);
-/******************************************************************************
-	outb_p(inb_p(0x21)&0xfb,0x21); ÔÊÐí´Ó8259AÐ¾Æ¬µÄIRQ2ÖÐ¶ÏÇëÇó
-	outb(inb_p(0xA1)&0xdf,0xA1); ÔÊÐí´Ó8259AÐ¾Æ¬µÄIRQ13ÖÐ¶ÏÇëÇó
-	ÔçÆðµÄPCÊ¹ÓÃµÄÊÇ8259ÖÐ¶Ï¿ØÖÆÆ÷£¬¶øÇÒÊ¹ÓÃÁËÁ½Æ¬¼¶ÁªÓÃÓÚÔö¼ÓÖÐ¶ÏÒý½ÅÊý
-*******************************************************************************/
+	/*
+	 * è®¾ç½®8259ä¸­æ–­æŽ§åˆ¶å™¨ï¼Œå…·ä½“å¯åœ¨ç½‘ä¸ŠæŸ¥é˜…èµ„æ–™
+	 */
 	outb_p(inb_p(0x21)&0xfb,0x21);
 	outb(inb_p(0xA1)&0xdf,0xA1);
 	set_trap_gate(39,&parallel_interrupt);

@@ -87,8 +87,8 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 
 	// NOTE!: the following statement now work with gcc 4.3.2 now, and you
 	// must compile _THIS_ memcpy without no -O of gcc.#ifndef GCC4_3
-	/* Èç¹ûÊ¹ÓÃÁË memcpy º¯Êı£¬ÒòÎªtask_structÊÇ¸öÁªºÏÌå»á¿½±´¶ÑÕ»Êı¾İ
-	 * ´Ë´¦µÄÓï·¨²»»á¿½±´¶ÑÕ»Êı¾İ
+	/* å¦‚æœä½¿ç”¨äº† memcpy å‡½æ•°ï¼Œå› ä¸ºtask_structæ˜¯ä¸ªè”åˆä½“ä¼šæ‹·è´å †æ ˆæ•°æ®
+	 * æ­¤å¤„çš„è¯­æ³•ä¸ä¼šæ‹·è´å †æ ˆæ•°æ®
 	 *
 	 */
 	*p = *current;	/* NOTE! this doesn't copy the supervisor stack */
@@ -109,7 +109,7 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->tss.ss0 = 0x10;
 	p->tss.eip = eip;
 	p->tss.eflags = eflags;
-	p->tss.eax = 0; 		/*ÎªÊ²Ã´½ø³Ì·µ»Ø0µÄÔ­Òò*/
+	p->tss.eax = 0; 		/*ä¸ºä»€ä¹ˆè¿›ç¨‹è¿”å›0çš„åŸå› */
 	p->tss.ecx = ecx;
 	p->tss.edx = edx;
 	p->tss.ebx = ebx;
@@ -125,28 +125,28 @@ int copy_process(int nr,long ebp,long edi,long esi,long gs,long none,
 	p->tss.gs = gs & 0xffff;
 	p->tss.ldt = _LDT(nr);
 	p->tss.trace_bitmap = 0x80000000;
-#else
+#else	
 	stack_top = (long *)(PAGE_SIZE + (long)p);
 	*(--stack_top) = ss & 0xffff;
 	*(--stack_top) = esp;
 	*(--stack_top) = eflags;
 	*(--stack_top) = cs & 0xffff;
 	*(--stack_top) = eip;
-	*(--stack_top) = ds & 0xffff; 
-	*(--stack_top) = es & 0xffff; 
-	*(--stack_top) = fs & 0xffff; 
-	*(--stack_top) = gs & 0xffff;
-	*(--stack_top) = esi; 
-	*(--stack_top) = edi; 
-	*(--stack_top) = edx;
 	*(--stack_top) = (long)first_return_from_kernel;
 	*(--stack_top) = ebp;
+	*(--stack_top) = edx;
 	*(--stack_top) = ecx;
 	*(--stack_top) = ebx;
-	*(--stack_top) = 0; 	/*ÎªÊ²Ã´½ø³Ì·µ»Ø0µÄÔ­Òò*/
+	*(--stack_top) = 0; 	/*ä¸ºä»€ä¹ˆè¿›ç¨‹è¿”å›0çš„åŸå› ï¼Œè¿™é‡Œæ˜¯EAXå¯„å­˜å™¨çš„å†…å®¹*/
+	*(--stack_top) = edi;
+	*(--stack_top) = esi;
+	*(--stack_top) = eflags;
+	*(--stack_top) = gs & 0xffff;
+	*(--stack_top) = fs & 0xffff; 
+	*(--stack_top) = es & 0xffff; 
+	*(--stack_top) = ds & 0xffff; 
 	p->stack_top = (long)stack_top;
 #endif
-
 
 	if (last_task_used_math == current)
 		__asm__("clts ; fnsave %0"::"m" (p->tss.i387));
@@ -181,20 +181,20 @@ int find_empty_process(void)
 	int i;
 
 repeat:
-	/* Èç¹ûlast_pidÂúÁË£¬Ôò´ÓÖØĞÂ¿ªÊ¼±àºÅ
+	/* å¦‚æœlast_pidæ»¡äº†ï¼Œåˆ™ä»é‡æ–°å¼€å§‹ç¼–å·
 	 *
 	 */
 	if ((++last_pid) < 0) 
 		last_pid=1;
 
-	/* ²éÕÒlast_pidÊÇ·ñÒÑ¾­±»Õ¼ÓÃ£¬Èç¹ûÊÇÔò++last_pid¼ÌĞø³¢ÊÔ
+	/* æŸ¥æ‰¾last_pidæ˜¯å¦å·²ç»è¢«å ç”¨ï¼Œå¦‚æœæ˜¯åˆ™++last_pidç»§ç»­å°è¯•
 	 *
 	 */
 	for(i=0; i<NR_TASKS; i++)
 		if (task[i] && task[i]->pid == last_pid) 
 			goto repeat;
 
-	/* ÔÚtaskÊı×éÖĞÑ°ÕÒÒ»¸ö¿ÕµÄtask²¢·µ»ØÆäÊı×éÏÂ±ê
+	/* åœ¨taskæ•°ç»„ä¸­å¯»æ‰¾ä¸€ä¸ªç©ºçš„taskå¹¶è¿”å›å…¶æ•°ç»„ä¸‹æ ‡
 	 *
 	 */
 	for(i=1; i<NR_TASKS; i++)

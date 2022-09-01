@@ -91,7 +91,6 @@ static void tell_father(int pid)
 				continue;
 			if (task[i]->pid != pid)
 				continue;
-			//printk("ddddddddddddddddd %d %d is SIGCHLD\n", i, pid);
 			task[i]->signal |= (1<<(SIGCHLD-1));
 			return;
 		}

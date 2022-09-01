@@ -76,20 +76,25 @@ static unsigned long * create_tables(char * p,int argc,int envc)
 
 /*
  * count() counts the number of arguments/envelopes
+ * 获取argv的数量
  */
 static int count(char ** argv)
 {
 	int i=0;
 	char ** tmp;
 
+	/*
+	 * 将argv的值赋值给tmp
+	 */
 	if ((tmp = argv)) {
 
 		/* 
-		 * argv�ĸ�ʽΪ
-		 * static char * argv[] = { "-/bin/sh",NULL };
-		 * argvΪ����ĵ�ַ
-		 * ���������˼��
-		 * ��fs:argvȡ������Ϊ��ַ�������ΪNULL�����++
+		 * argv的格式为
+		 * static char * argv[] = { "-/bin/sh", NULL};
+		 * argv为数组的地址
+		 * 所以这个意思是
+		 * 从fs:tmp取数据作为地址，如果不为NULL则计数++
+		 * 返回的是字符串的首地址，在这里只统计个数
 		 *
 		 *
 		 */
@@ -124,85 +129,114 @@ static unsigned long copy_strings(int argc,char ** argv,unsigned long *page,
 	int len, offset = 0;
 	unsigned long old_fs, new_fs;
 
-	if (!p)
+	if (!p) {
 		return 0;	/* bullet-proofing */
+	}
 
-	/* ds�ں˿ռ� new_fs
-	 * fs�û��ռ� old_fs
+	/* 
+	 * ds内核空间 new_fs
+	 * fs用户空间 old_fs
 	 *
 	 */
 	new_fs = get_ds();
 	old_fs = get_fs();
-
-
-	/* ����Ǵ��ں˿������ں˿ռ䣬����fsΪ�ں����ݶ�ѡ����
-	 * ���������Ƿ�������ֻ����from_kmem = 0�������
+	/* 
+	 * 如果是从内核拷贝到内核空间，设置fs为内核数据段选择子
+	 * 在这里我们分析可以只考虑from_kmem = 0的情况，
 	 *
 	 */
-	if (from_kmem==2)
+	if (from_kmem==2) {
 		set_fs(new_fs);
+	}
 		
 	while (argc-- > 0) {
-		if (from_kmem == 1)
+		if (from_kmem == 1) {
 			set_fs(new_fs);
+		}
 		/*
-		 * ���ǿ��Կ�����仰�ǻ�ȡ���һ����������ʼ��ַ
+		 * 我们可以看到这句话是获取参数的起始地址
 		 */
-		if (!(tmp = (char *)get_fs_long(((unsigned long *)argv)+argc)))
+		if (!(tmp = (char *)get_fs_long(((unsigned long *)argv)+argc))) {
 			panic("argc is wrong");
-		if (from_kmem == 1)
+		}
+		if (from_kmem == 1) {
 			set_fs(old_fs);
+		}
+
 		len=0;		/* remember zero-padding */
 		/*
-		 * ��ȡ�����ַ����ĳ���
-		 *
+		 * 获取参数字符串的长度
+		 * len表示这个字符串的长度
+		 * tmp指向这个字符串的末尾
 		 */
 		do {
 			len++;
 		} while (get_fs_byte(tmp++));
-		/* pΪ128KB -4 ������ȴ���128KB - 4 �򷵻أ�
-		 * ����ע�ͣ�������࿽��128KB-4���ȵĲ���
-		 *
-		 *
+		/* 
+		 * p为128KB -4 如果长度大于128KB - 4 则返回，
+		 * 根据注释，我们最多拷贝128KB-4长度的参数
+		 * 根据注释，作者说这个不应该发生
 		 */
-		if (p-len < 0) {	/* this shouldn't happen - 128kB */
+		if (p - len < 0) {	/* this shouldn't happen - 128kB */
 			set_fs(old_fs);
 			return 0;
 		}
+		/* p的初始值为128KB的最后四个字节的地址
+		 * tmp为argv字符串的大小
+		 * len也是argv字符串的大小
+		 */
 		while (len) {
 			--p; --tmp; --len;
+			/*
+			 * --offset < 0 表示第一次， offset等于p这页面的偏移
+			 */
 			if (--offset < 0) {
 				offset = p % PAGE_SIZE;
-				if (from_kmem==2)
+				if (from_kmem==2) {
 					set_fs(old_fs);
+				}
+				/*
+				 * page[p/PAGE_SIZE]表示p所在page的值如果为0，表示页不存在
+				 * 这个时候申请一个页作为pag和page[p/PAGE_SIZE]的值
+				 */
 				if (!(pag = (char *) page[p/PAGE_SIZE]) &&
-				    !(pag = (char *) (page[p/PAGE_SIZE] =
-				      get_free_page()))) 
+				    !(pag = (char *) (page[p/PAGE_SIZE] = get_free_page()))) { 
 					return 0;
-				if (from_kmem==2)
+				}
+				if (from_kmem==2) {
 					set_fs(new_fs);
-
+				}
 			}
+			/*
+			 * 从这个页的开始存放tmp指向的字节，知道len为0，也就是复制整个字符串
+			 * 由于每复制一个字节，p和offset都会减一
+			 * 当offset为0时会p会减小到倒数第二个页，以此类推
+			 */
 			*(pag + offset) = get_fs_byte(tmp);
 		}
 	}
-	if (from_kmem==2)
+	if (from_kmem == 2) {
 		set_fs(old_fs);
+	}
 	return p;
 }
 
 #define TASK_SIZE	(0xC0000000)
-
 static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 {
 	unsigned long code_limit,data_limit,code_base,data_base;
 	int i;
-	
+	/*
+	 * code_limit和data_limit都设置为3GB，0xC0000000
+	 * code_base和data_base都设置为0
+	 */
 	code_limit = TASK_SIZE;
 	data_limit = TASK_SIZE;
 	code_base = data_base = 0;
 	current->start_code = code_base;
-
+	/*
+	 * 设置当前进程的LDT
+	 */
 	set_base(current->ldt[1],code_base);
 	set_limit(current->ldt[1],code_limit);
 	set_base(current->ldt[2],data_base);
@@ -210,30 +244,28 @@ static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 
 	
 	/* make sure fs points to the NEW data segment */
+	/*
+	 * 回复FS为0x17
+	 */
 	__asm__("pushl $0x17\n\tpop %%fs"::);
 
-	/* ָ��64MB�����һ���ֽ�
-	 *
+	/* 
+	 * data_base现在是3GB的地址空间
 	 */
-	data_base += data_limit;
-	
-	for (i=MAX_ARG_PAGES-1 ; i>=0 ; i--) {
-		
+	data_base += data_limit;	
+	for (i = MAX_ARG_PAGES - 1; i >= 0; i--) {	
 		/*
-		 * data_base 64MB�ĵ�ַ��һ��ҳ
+		 * data_base 现在是3GB的地址第一个页
 		 */
 		data_base -= PAGE_SIZE;
-
-		/* ���page[i]��Ч��Ҳ���ǲ�����Ч
-		 * �򽫴�����ҳӳ�䵽data_base��ַ��
+		/* 
+		 * 如果page[i]有效，也就是参数有效
+		 * 则将此物理页映射到data_base地址处
 		 */
 		if (page[i]) {
 			put_page(page[i], data_base);
 		}
 	}
-	/*
-	 * ����64M
-	 */
 	return data_limit;
 }
 
@@ -251,27 +283,27 @@ int do_execve(unsigned long * eip,long tmp,char * filename,
 	int e_uid, e_gid;
 	int retval;
 	int sh_bang = 0;
-	unsigned long p=PAGE_SIZE*MAX_ARG_PAGES-4;
+	unsigned long p = PAGE_SIZE*MAX_ARG_PAGES-4;
 
 	/* 
-	 * eip[i]��ʾջ�з��ص�cs��ַ
-	 * ���е�ѡ���Ӳ���Ϊ�ں�ѡ���ӣ�Ҳ����˵�ں˳����ܵ��ô˺���
+	 * eip[i]表示栈中返回的cs地址
+	 * 其中的选择子不能为内核选择子，也就是说内核程序不能调用此函数
 	 *
 	 */
 	if ((0xffff & eip[1]) != 0x000f)
 		panic("execve called from supervisor mode");
 
 	/* 
-	 * ��ʼ�������ͻ�����ҳ��
+	 * 初始化参数和环境的页表
 	 *
 	 */
-	for (i=0 ; i<MAX_ARG_PAGES ; i++)	/* clear page-table */
-		page[i]=0;
+	for (i=0; i < MAX_ARG_PAGES; i++)	/* clear page-table */
+		page[i] = 0;
 	/*
-	 * ��ȡ��ִ���ļ��Ķ�Ӧ��inode 
+	 * 获取可执行文件的对应的inode 
 	 *
 	 */
-	if (!(inode=namei(filename)))		/* get executables inode */
+	if (!(inode = namei(filename)))		/* get executables inode */
 		return -ENOENT;
 
 	/*
@@ -282,14 +314,14 @@ int do_execve(unsigned long * eip,long tmp,char * filename,
 	
 restart_interp:
 	/*
-	 * ������һ�������ļ�
+	 * 必须是一个常规文件
 	 */
 	if (!S_ISREG(inode->i_mode)) {	/* must be regular file */
 		retval = -EACCES;
 		goto exec_error2;
 	}
-	/* Ȩ�޼��
-	 *
+	/* 
+	 * 权限检查
 	 */
 	i = inode->i_mode;
 	e_uid = (i & S_ISUID) ? inode->i_uid : current->euid;
@@ -304,19 +336,19 @@ restart_interp:
 		goto exec_error2;
 	}
 	/*
-	 * ��ȡһ������
+	 * 读取一块数据
 	 */
 	if (!(bh = bread(inode->i_dev,inode->i_zone[0]))) {
 		retval = -EACCES;
 		goto exec_error2;
 	}
 	/*
-	 * ��ȡ�ļ�ͷ��
+	 * 获取文件头部
 	 */
 	ex = *((struct exec *) bh->b_data);	/* read exec-header */
 
 	/*
-	 * ����ǽű���ִ�нű�
+	 * 如果是脚本则执行脚本，我们可以先不关注这个
 	 */
 	if ((bh->b_data[0] == '#') && (bh->b_data[1] == '!') && (!sh_bang)) {
 		/*
@@ -392,8 +424,8 @@ restart_interp:
 	}
 	brelse(bh);
 	if (N_MAGIC(ex) != ZMAGIC || ex.a_trsize || ex.a_drsize ||
-		ex.a_text+ex.a_data+ex.a_bss>0x3000000 ||
-		inode->i_size < ex.a_text+ex.a_data+ex.a_syms+N_TXTOFF(ex)) {
+		ex.a_text + ex.a_data + ex.a_bss > (16*1024*1024) ||
+		inode->i_size < ex.a_text + ex.a_data + ex.a_syms + N_TXTOFF(ex)) {
 		retval = -ENOEXEC;
 		goto exec_error2;
 	}
@@ -401,15 +433,24 @@ restart_interp:
 		retval = -ENOEXEC;
 		goto exec_error2;
 	}
+	/*
+	 * 拷贝环境变量
+	 */
 	if (!sh_bang) {
-		p = copy_strings(envc,envp,page,p,0);
-		p = copy_strings(argc,argv,page,p,0);
+		/* envc表示个数，envp表示字符串数组的地址，
+		 * page是存放页表的数组，p是page的编译，0是标记
+		 * 执行完下面的语句
+		 * 代码会将envp和argv卡拷贝到page指向的页面中，p表示page中的偏移
+		 *
+		 */
+		p = copy_strings(envc, envp, page, p, 0);
+		p = copy_strings(argc, argv, page, p, 0);
 		if (!p) {
 			retval = -ENOMEM;
 			goto exec_error2;
 		}
 	}
-/* OK, This is the point of no return */
+	/* OK, This is the point of no return */
 	if (current->executable)
 		iput(current->executable);
 	current->executable = inode;
@@ -421,20 +462,40 @@ restart_interp:
 		if ((current->close_on_exec>>i)&1)
 			sys_close(i);
 	current->close_on_exec = 0;
+	/*
+	 * 清理0-3GB的页表
+	 */
 	clear_page_tables(current);
 	if (last_task_used_math == current)
 		last_task_used_math = NULL;
 	current->used_math = 0;
-	/* change_ldt������ӳ�䵽�˶��˲�����64MB�ĵ�ַ
-	 * Ȼ���ȥMAX_ARG_PAGES*PAGE_SIZE����ַ�޸�Ϊ�������ʼ��Ȼ���ڼ���ƫ��p
-	 * ��ʱp��ֵ��64MB�Ĳ�����
-	 *
+	/* 
+	 * change_ldt将page中有效部分映射到3GB地址，并返回0xC0000000
+	 * MAX_ARG_PAGES*PAGE_SIZE是给envp和argv预留的空间
+	 * change_ldt(ex.a_text, page) - MAX_ARG_PAGES*PAGE_SIZE 返回的是预留空间的起始地址
+	 * p是page内的偏移，因此预留空间的起始地址加上p偏移，
+	 * 此时p就是参数存放的虚拟地址
 	 */
-	p += change_ldt(ex.a_text,page)-MAX_ARG_PAGES*PAGE_SIZE;
-	p = (unsigned long) create_tables((char *)p,argc,envc);
+	p += change_ldt(ex.a_text, page) - MAX_ARG_PAGES*PAGE_SIZE;
+	/*
+	 * 处理环境变量和参数，返回新的参数存放地址的虚拟地址，
+	 * 也就是用户程序堆栈的虚拟地址
+	 */
+	p = (unsigned long) create_tables((char *)p, argc, envc);
+
+	/*
+	 * |   code   |   data   |   bss    | brk
+	 * |----------|----------|----------|
+	 * 
+	 * brk一般是malloc系统掉用的起始地址
+	 * 
+	 */
 	current->brk = ex.a_bss +
 		(current->end_data = ex.a_data +
 		(current->end_code = ex.a_text));
+	/*
+	 * 设置堆栈
+	 */
 	current->start_stack = p & 0xfffff000;
 	current->euid = e_uid;
 	current->egid = e_gid;
@@ -442,7 +503,7 @@ restart_interp:
 	while (i&0xfff)
 		put_fs_byte(0,(char *) (i++));
 	eip[0] = ex.a_entry;		/* eip, magic happens :-) */
-	eip[3] = p;			/* stack pointer */
+	eip[3] = p;					/* stack pointer */
 	return 0;
 exec_error2:
 	iput(inode);

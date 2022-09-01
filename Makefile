@@ -98,4 +98,15 @@ distclean: clean
 
 FORCE: ;
 
+help::
+	$(Q)echo ""
+	$(Q)echo "Default use Serial for stdin stdout stderr"
+	$(Q)echo "Default use Kernel stack for task switch"
+	$(Q)echo "Use [make VGA=1 ] to use VGA for stdio stdout stderr"
+	$(Q)echo "Use [make TSS=1 ] to use TSS for task switch"
+	$(Q)echo "Use [make qemu  ] to use qemu serial"
+	$(Q)echo "Use [make bochs ] to use bochs VGA"
+	$(Q)echo "Use [make qemu-x] to use qemu VGA"
+	$(Q)echo ""
+	
 .PHONE: Image kernel.elf kernel.bin
