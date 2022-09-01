@@ -21,16 +21,18 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  *
- * ÔÚÎÒ¿´À´Ö»ĞèÒªfork»òÕßpauseÖĞÓĞÒ»¸öÎªinline¾Í¿ÉÒÔ£¬Í¨¹ıĞŞ¸Ä³ÌĞòÒ²Ö¤Êµ¿ÉÒÔ
- * ÎÒÃÇÏëÏóÒ»ÏÂÕâÑùµÄÒ»¸ö³¡¾°
- * forkÊ±½«·µ»ØµØÖ·ÈëÕ»£¬Æô¶¯ÏµÍ³µ÷ÓÃ£¬µ÷ÓÃÍê³ÉºóÈç¹û·¢Éú½ø³ÌÇĞ»»
- * »áµ¼ÖÂtask0ÔËĞĞ£¬task0ÔËĞĞ»á½«pauseµÄµØÖ·ÈëÕ»£¬
+ * åœ¨æˆ‘çœ‹æ¥åªéœ€è¦forkæˆ–è€…pauseä¸­æœ‰ä¸€ä¸ªä¸ºinlineå°±å¯ä»¥ï¼Œé€šè¿‡ä¿®æ”¹ç¨‹åºä¹Ÿè¯å®å¯ä»¥
+ * æˆ‘ä»¬æƒ³è±¡ä¸€ä¸‹è¿™æ ·çš„ä¸€ä¸ªåœºæ™¯
+ * forkæ—¶å°†è¿”å›åœ°å€å…¥æ ˆï¼Œå¯åŠ¨ç³»ç»Ÿè°ƒç”¨ï¼Œè°ƒç”¨å®Œæˆåå¦‚æœå‘ç”Ÿè¿›ç¨‹åˆ‡æ¢
+ * ä¼šå¯¼è‡´task0è¿è¡Œï¼Œtask0è¿è¡Œä¼šå°†pauseçš„åœ°å€å…¥æ ˆï¼Œ
  *
  *
  */
+
 #ifndef K_INLINE
 #define K_INLINE __attribute__((always_inline))
 #endif
+
 
 static inline K_INLINE _syscall0(int,fork)
 static inline K_INLINE _syscall0(int,pause)
@@ -50,8 +52,7 @@ static pid_t wait(int * wait_stat)
 	return waitpid(-1,wait_stat,0);
 }
 
-static inline K_INLINE void init(void);
-
+void init(void);
 
 #include <linux/tty.h>
 #include <linux/sched.h>
@@ -83,7 +84,7 @@ extern long startup_time;
 
 /*
  * This is set up by the setup-routine at boot-time
- * ÕâĞ©µØÖ·¿ÉÒÔ·ÃÎÊµÄÔ­ÒòÊÇÓÉÓÚ0µØÖ·ºÍ0xc0000000¿ªÊ¼µÄ4MB¶¼Ó³Éäµ½Í¬Ò»ÇøÓò
+ * è¿™äº›åœ°å€å¯ä»¥è®¿é—®çš„åŸå› æ˜¯ç”±äº0åœ°å€å’Œ0xc0000000å¼€å§‹çš„4MBéƒ½æ˜ å°„åˆ°åŒä¸€åŒºåŸŸ
  *
  */
 #define EXT_MEM_K (*(unsigned short *)0x90002)
@@ -134,32 +135,26 @@ extern int printk(const char * fmt, ...);
 
 struct drive_info { char dummy[32]; } drive_info;
 
-void start_kernel(int __a, int __b, int __c)		/* This really IS void, no error here. */
-{			/* The startup routine assumes (well, ...) this */
-/*
- * Interrupts are still disabled. Do necessary setups, then
- * enable them
- */
-
-/*******************************************************************************
-	ORIG_ROOT_DEVÎª0x901FC£¬ÓÉÓÚÔÚÇ°ÃæµÄ³ÌĞòÖĞ»Ø¼ûbootsect³ÌĞò¿½±´µ½0x90000´¦£¬
-	bootsectµÄ508µØÖ·´æ·ÅµÄÊ±¸ùÉè±¸µÄ±àºÅ301£¬0x1fc=508£¬ËùÓĞ´Ë´¦´æ·ÅµÄÊÇ¸ùÉè±¸
-	µÄÉè±¸ºÅ;
-	DRIVE_INFO´æ·ÅµÄÊÇµÚÒ»¸öÓ²ÅÌĞÅÏ¢
-	EXT_MEM_KÏµÍ³´Ó1MB¿ªÊ¼µÄÀ©Õ¹ÄÚ´æÊıÖµ(KB)£¬¸´Ï°Ò»ÏÂÊµÄ£Ê½ÏÂ×î¶à·ÃÎÊ1MB¿Õ¼ä
-	memory_end & 0xffff000½øĞĞÄÚ´æ¶ÔÆë£¬ÎÒÃÇ¿´µ½ºóÃæÓĞ3¸ö0£¬Ò»¹²12Î»£¬Òò´ËÎÒÃÇ
-	ÖªµÀÄÚºËÒªÇóÒ³¶ÔÆë¼´4KB¶ÔÆä
-
-	ÎÒÃÇ¸ù¾İ´úÂë¿´µ½Èç¹ûÓ²ÅÌ´óÓÚ16MB£¬ÔòÄÚ´æÎª16MB,
-	Èç¹ûÄÚ´æ´óÓÚ12MB, buffer_memory_endÎª4MB
-	Èç¹ûÄÚ´æ´óÓÚ6MB£¬buffer_memory_endÎª2MB
-	·ñÔòbuffer_memory_endÎª1M
-	memory_end×î¶à16MB
-*******************************************************************************/
+void start_kernel(int __a, int __b, int __c)		
+{
+	/*
+	 * Interrupts are still disabled. Do necessary setups, then
+	 * enable them
+	 * ORIG_ROOT_DEVæ˜¯åœ¨bootsectæ¨¡å—ä¸­root_devçš„åœ°å€çš„å€¼
+	 * DRIVE_INFOæ˜¯é€šè¿‡setupæ¨¡å—é€šè¿‡BIOSè·å–çš„å‚æ•°
+	 * EXT_MEM_Kæ˜¯setupæ¨¡å—ä¸­é€šè¿‡BIOSæ‰ç”¨è·å–çš„1MBä»¥ä¸Šçš„æ‰©å±•å†…å­˜çš„å¤§å°
+	 * memory_endæ˜¯1MBåŠ ä¸Šæ‰©å±•å†…å­˜ï¼Œä¹Ÿå°±æ˜¯å†…å­˜çš„ç»“æŸåœ°å€
+	 * memory_end & 0xffff000 å¯çŸ¥æˆ‘ä»¬è¦æ±‚å†…å­˜4KBå¯¹é½
+	 */
  	ROOT_DEV = ORIG_ROOT_DEV;
  	drive_info = DRIVE_INFO;
 	memory_end = (1<<20) + (EXT_MEM_K<<10);
 	memory_end &= 0xfffff000;
+	/* 
+	 * å†…å­˜æœ€å¤§ä¸º16Mï¼Œæ ¹æ®å†…å­˜å¤§å°è·å–main_memory_start
+	 * å¦‚æœå½“å‰å†…å­˜ä¸º16Mï¼Œæˆ‘ä»¬å¯çŸ¥é“main_memory_startä¸º6M
+	 *
+	 */
 	if (memory_end > 16*1024*1024)
 		memory_end = 16*1024*1024;
 	if (memory_end > 12*1024*1024) 
@@ -172,16 +167,16 @@ void start_kernel(int __a, int __b, int __c)		/* This really IS void, no error h
 #ifdef RAMDISK_SIZE
 	main_memory_start += rd_init(main_memory_start, RAMDISK_SIZE*1024);
 #endif
-/*******************************************************************************
-	´´½¨mem_mapÊı×é£¬²¢½«main_memory_startµ½memory_endÖ®¼äµÄÄÚ´æ
-	ÒÔ4KBÎªÒ»×é£¬½øĞĞ´´½¨
-*******************************************************************************/
+	/*
+	 * å†…å­˜åˆå§‹åŒ–ï¼Œåˆ›å»ºmem_mapæ•°ç»„ï¼Œ
+	 * å°†main_memory_startåˆ°memory_endä¹‹é—´çš„å†…å­˜4KBä¸€ç»„è¿›è¡Œæ ‡è®°
+	 */
 	mem_init(main_memory_start,memory_end);
 	trap_init();
 	blk_dev_init();
 	chr_dev_init();
 	tty_init();
-	printk("params a %d b %d c %d\n", __a, __b, __c);
+	printk("params a=%d b=%d c=%d\n", __a, __b, __c);
 	printk("mem_start is %dMB\n", main_memory_start/(1024*1024));
 	printk("men_end is %dMB\n", memory_end/(1024*1024));
 	printk("system has %d pages omg\n", get_total_pages());
@@ -196,66 +191,70 @@ void start_kernel(int __a, int __b, int __c)		/* This really IS void, no error h
 	show_mem();
 
 	/*
-	 * stiÔÊĞíÖĞ¶Ï
-	 *
+	 * stiå…è®¸ä¸­æ–­
 	 */	
 	sti();
 	/*
-	 Ö´ĞĞÍêmove_to_user_modeº¯Êıºó£¬³ÌĞò»áÊÖ¹¤ÇĞµ½task0Ö´ĞĞ£¬²â´úÂë¶ÎºÍÊı¾İ¶Î
-	 ºÍÄÚºËÒ»ÖÂ£¬¶ÑÕ»Ò²Ê¹ÓÃÁËÄÚºË¶ÑÕ»£¬ÔËĞĞÈ¨ÏŞ±ä³É3, Òò´ËÎÒÃÇ¿ÉÒÔ¿´³öLinuxÖĞ
-	 Ê¹ÓÃ0ºÍ3È¨ÏŞ
-	 ¾ßÌå¿ÉÒÔ²é¿´move_to_user_mode·ÖÎö
- 	*/
+	 * æ‰§è¡Œå®Œmove_to_user_modeå‡½æ•°åï¼Œç¨‹åºä¼šæ‰‹å·¥åˆ‡åˆ°task0æ‰§è¡Œï¼Œæµ‹ä»£ç æ®µå’Œæ•°æ®æ®µ
+	 * å’Œå†…æ ¸ä¸€è‡´ï¼Œå †æ ˆä¹Ÿä½¿ç”¨äº†å†…æ ¸å †æ ˆï¼Œè¿è¡Œæƒé™å˜æˆ3, å› æ­¤æˆ‘ä»¬å¯ä»¥çœ‹å‡ºLinuxä¸­
+	 * ä½¿ç”¨0å’Œ3æƒé™
+	 * å…·ä½“å¯ä»¥æŸ¥çœ‹move_to_user_modeåˆ†æ
+ 	 */
 	move_to_user_mode();
 
 	/*	
-     fork³ÌĞòÊÇÒ»¸öÏµÍ³µ÷ÓÃ£¬Ê¹ÓÃ_syscall0½ø³ÌÕ¹¿ªÉú³É£¬0±íÊ¾Ã»ÓĞ²ÎÊı
-     
-     #define _syscall0(type,name) \
-     	type name(void) \
-     	{ \
-     	long __res; \
-     	__asm__ volatile ("int $0x80" \
-     	 : "=a" (__res) \
-     	 : "0" (__NR_##name)); \
-     	if (__res >= 0) \
-     	 return (type) __res; \
-     	errno = -__res; \
-     	return -1; \
-     
-     ¸ù¾İÇ°ÃæµÄ¶¨Òåstatic inline _syscall0(int,fork) Õ¹¿ª
-     
-     int fork() {
-     	register eax __ret;
-     	eax= __NR_fork;
-     	int 0x80
-     	if (eax >= 0)
-     		return int __res;
-     	error = - __res
-     	return -1
-     }
-     INT 0x80ÊÇÈíÖĞ¶Ïº¯Êı£¬Æäµ÷ÓÃÁ÷³ÌÎª:
-     CPUÍ¨¹ıÖĞ¶ÏÏòÁ¿0x80ÕÒµ½¶ÔÓ¦µÄÃèÊö·û£¬´ËÃèÊö·û°üº¬ÁË¶ÎÑ¡Ôñ×ÓºÍÆ«ÒÆµØÖ·ÒÑ¾­DPL
-     CPU¼ì²éµ±Ç°µÄDPLÊÇ·ñĞ¡ÓÚÃèÊö·ûµÄDPL
-     CPU»á´Óµ±Ç°TSS¶ÎÖĞÕÒµ½ÖĞ¶Ï´¦Àí³ÌĞòµÄÕ»Ñ¡Ôñ×ÓºÍÕ»Ö¸Õë×÷ÎªĞÂµÄÕ»µØÖ·(tss.ss0, tss.esp0)
-     Èç¹ûDPL·¢Éú±ä»¯Ôò½«µ±Ç°µÄSS, ESP, EFLAGS, CS, EIPÑ¹ÈëĞÂµÄÕ»ÖĞ
-     Èç¹ûDPLÃ»ÓĞ·¢Éú±ä»¯Ôò½«EFLAGS, CS, EIPÑ¹ÈçĞÂµÄÕ»ÖĞ
-     CPU´ÓÖĞ¶ÏÃèÊö·ûÖĞÈ¡CS:EIP×÷ÎªĞÂµÄÔËĞĞµØÖ·
-     
-     forkÖ´ĞĞÍê±ÏºóÊÇ½ø³Ì1£¬´ËÊ±½ø³Ì0ºÍ½ø³Ì1Ê¹ÓÃÏàÍ¬µÄÓÃ»§¿Õ¼äÕ»£¬
-     ÎªÁË½ø³ÌÖ®¼ä»¥²»Ó°ÏìÒò´Ë
-     ÔİÊ±²»Ê¹ÓÃÕ»£¬º¯ÊıÒÔÄÚÁªµÄĞÎÊ½½øĞĞµ÷ÓÃ£¬ÊÔÏëÒ»ÏÂ
-     Èç¹ûÒÔº¯Êıµ÷ÓÃµÄĞÎ³Éµ±forkÊ±·¢ÉúÇĞ»»£¬ÏµÍ³½«µ±Ç°µÄSS, SPÑ¹Õ»£¬
-     ´ËÊ±pause½ø³ÌÒ²½«SS, SPÑ¹Õ»
-     pauseµÄ¶ÑÕ»Êı¾İ»á¸²¸ÇforkµÄ¶ÑÕ»Êı¾İ£¬Ê¹forkº¯Êı·µ»Øµ½pauseº¯ÊıÕâÀï£¬
-     ´Ó¶øinit²»ÄÜÖ´ĞĞ
-     Í¬Àí£¬Ò²¿ÉÄÜµ¼ÖÂpause½ø³ÌÖ´ĞĞµ½init³ÌĞòÀï
-	*/
+     * forkç¨‹åºæ˜¯ä¸€ä¸ªç³»ç»Ÿè°ƒç”¨ï¼Œä½¿ç”¨_syscall0è¿›ç¨‹å±•å¼€ç”Ÿæˆï¼Œ0è¡¨ç¤ºæ²¡æœ‰å‚æ•°
+     *
+     * #define _syscall0(type,name) \
+     *	type name(void) \
+     *	{ \
+     *	long __res; \
+     *	__asm__ volatile ("int $0x80" \
+     *	 : "=a" (__res) \
+     *	 : "0" (__NR_##name)); \
+     *	if (__res >= 0) \
+     *	 return (type) __res; \
+     *	errno = -__res; \
+     *	return -1; \
+     *
+     * æ ¹æ®å‰é¢çš„å®šä¹‰static inline _syscall0(int,fork) å±•å¼€
+     *
+     * int fork() {
+     *	register eax __ret;
+     *	eax= __NR_fork;
+     *	int 0x80
+     *	if (eax >= 0)
+     *		return int __res;
+     *	error = - __res
+     *	return -1
+     * }
+     * INT 0x80æ˜¯è½¯ä¸­æ–­å‡½æ•°ï¼Œå…¶è°ƒç”¨æµç¨‹ä¸º:
+     * CPUé€šè¿‡ä¸­æ–­å‘é‡0x80æ‰¾åˆ°å¯¹åº”çš„æè¿°ç¬¦ï¼Œæ­¤æè¿°ç¬¦åŒ…å«äº†æ®µé€‰æ‹©å­å’Œåç§»åœ°å€å’Œå…¶DPL
+     * CPUæ£€æŸ¥å½“å‰çš„DPLæ˜¯å¦å°äºæè¿°ç¬¦çš„DPL,å¦‚æœå°äºæ‹’ç»æ‰§è¡Œ
+     * CPUä¼šä»å½“å‰TSSæ®µä¸­æ‰¾åˆ°ä¸­æ–­å¤„ç†ç¨‹åºçš„æ ˆé€‰æ‹©å­å’Œæ ˆæŒ‡é’ˆä½œä¸ºæ–°çš„æ ˆåœ°å€(tss.ss0, tss.esp0)
+     * å¦‚æœDPLå‘ç”Ÿå˜åŒ–åˆ™å°†å½“å‰çš„SS, ESP, EFLAGS, CS, EIPå‹å…¥æ–°çš„æ ˆä¸­
+     * å¦‚æœDPLæ²¡æœ‰å‘ç”Ÿå˜åŒ–åˆ™å°†EFLAGS, CS, EIPå‹å¦‚æ–°çš„æ ˆä¸­
+     * CPUä»ä¸­æ–­æè¿°ç¬¦ä¸­å–CS:EIPä½œä¸ºæ–°çš„è¿è¡Œåœ°å€
+	 * 
+	 * ä¸ºä»€ä¹ˆforkå’Œpauseéœ€è¦inlineæ‰§è¡Œå‘¢
+	 * æˆ‘ä»¬éœ€è¦çŸ¥é“çš„æ˜¯ï¼Œtask0æ²¡æœ‰å†™æ—¶å¤åˆ¶æœºåˆ¶ï¼Œforkåçš„task1æœ‰å†™æ—¶å¤åˆ¶æœºåˆ¶
+	 * å‡è®¾ä¸æ˜¯å†…è”æ‰§è¡Œï¼Œå½“æ‰ç”¨forkæ—¶ä¼šESPä¸ºAï¼Œå°†CS:IPå‹å…¥å½“å‰ç³»ç»Ÿå †æ ˆä¸­ä¹Ÿå°±æ˜¯ä»»åŠ¡0çš„ç”¨æˆ·å †æ ˆä¸­stack_startï¼Œæ­¤æ—¶ESPä¸ºB
+	 * ç„¶åæ‰§è¡ŒINT 80, æ­¤æŒ‡ä»¤ä¼šå°†SS ESP EFLAGS CS EIP ... å‹å…¥ä»»åŠ¡0çš„å†…æ ¸å †æ ˆ
+	 * åœ¨ç³»ç»Ÿæ‰ç”¨è¿‡ç¨‹ä¸­ä¼šäº§ç”Ÿä»»åŠ¡åˆ‡æ¢ï¼Œå› æ­¤ä»ç³»ç»Ÿè°ƒç”¨é€€å‡ºæ—¶å°±å¯èƒ½æœ‰ä¸¤ç§æƒ…å†µï¼Œä¸€ç§æ˜¯task0ï¼Œä¸€ç§æ˜¯task1
+	 * æ€ä¹ˆåŒºåˆ†task0è¿˜æ˜¯task1ï¼ŒINT 80è¿”å›åé€šè¿‡eaxå¯„å­˜å™¨åˆ¤æ–­å½“å‰æ˜¯task0è¿˜æ˜¯task1
+	 * å¦‚æœæ˜¯task1æ‰§è¡Œï¼Œforké€€å‡ºæ—¶ç”¨æˆ·æ€ESPæ¢å¤è¿”å›åˆ°init()å‡½æ•°ä¸­åˆ™ä¸ä¼šæœ‰å½±å“
+	 * å¦‚æœæ˜¯task0æ‰§è¡Œï¼Œforké€€å‡ºæ—¶ç”¨æˆ·æ€ESPæ¢å¤è¿”å›åˆ°for(;;) pauseæ‰§è¡Œï¼Œpauseæ‰§è¡Œå°†CS:IPå‹å…¥å †æ ˆï¼Œ
+	 *   å’Œfork()ç³»ç»Ÿæ‰ç”¨ä¸€æ ·ï¼Œpauseä»å†…æ ¸ä¸­è¿”å›æ—¶å¯èƒ½è¿›å…¥task1ï¼ˆforkï¼‰è¿›ç¨‹ä¸­
+	 *   forkå‡½æ•°ä½¿ç”¨RETè¿”å›ï¼Œä¼šä½¿ç”¨å †æ ˆä¸­çš„CS:IPæ¢å¤æ‰§è¡Œ
+	 * æˆ‘ä»¬è®¾æƒ³ä¸€ä¸‹forké€€å‡ºæ—¶ä¼šä½¿ç”¨CS:IPè¿›è¡Œæ¢å¤ï¼ˆèƒ½æ¢å¤å—ï¼‰ï¼Œæ­¤æ—¶CS:IPæ˜¯task0ï¼ˆpauseï¼‰å‹å…¥å †æ ˆçš„è¿”å›åœ°å€
+	 * ä¹Ÿå°±æ˜¯è¯´task1æ‰§è¡Œå®Œæ¯•åä¼šè¿›å…¥åˆ°pauseä¸­æ‰§è¡Œï¼Œç³»ç»Ÿå‡ºç°é—®é¢˜
+	 * 
+	 */
 	if (!fork()) {		/* we count on this going ok */
 		init();
 	}
 /*
- *   NOTE!!   For any other task 'pause()' would mean we have to get a
+ * NOTE!! For any other task 'pause()' would mean we have to get a
  * signal to awaken, but task0 is the sole exception (see 'schedule()')
  * as task 0 gets activated at every idle moment (when no other tasks
  * can run). For task0 'pause()' just means we go check if some other
@@ -287,7 +286,7 @@ const char *ttydev = "/dev/tty0";
 const char *ttydev = "/dev/tty1";
 #endif
 
-static inline K_INLINE void init(void)
+void init(void)
 {
 	int pid, i;
 

@@ -45,6 +45,7 @@ EFLAGS		= 0x24
 OLDESP		= 0x28
 OLDSS		= 0x2C
 
+# offset within task_struct
 state	= 0		# these are offsets into the task-struct.
 counter	= 4
 priority = 8
@@ -70,58 +71,58 @@ nr_system_calls = 86
 .globl device_not_available, coprocessor_error
 .globl switch_to_by_stack, first_return_from_kernel
 
-.align 2
+.align 4
 bad_sys_call:
-	movl $-1,%eax
-	iret
-.align 2
+	movl $-1,%eax					# é”™è¯¯ç 
+	iret							# å¼¹å‡ºEIP,CS,EFLAGS,ESP,SSæ¢å¤åˆ°ç”¨æˆ·ç©ºé—´æ‰§è¡Œ
+.align 4
 reschedule:
-	pushl $ret_from_sys_call
-	jmp schedule
+	pushl $ret_from_sys_call		# ä¿å­˜è¿”å›åœ°å€
+	jmp schedule					# è·³åˆ°scheduleæ‰§è¡Œï¼Œscheduleæ²¡æœ‰å‚æ•°ï¼Œå› æ­¤scheduleæ‰§è¡ŒRETï¼Œåˆ™è·³åˆ°ret_form_sys_callæ‰§è¡Œ
 
-.align 2
+.align 4
 system_call:
-	cmpl $nr_system_calls-1,%eax    # ÅĞ¶ÏÏµÍ³µ÷ÓÃºÅÊÇ·ñºÏ·¨
-	ja bad_sys_call                 # Èç¹û²»¿ÉºÏ·¨ÔòÌøµ½bad_sys_call´¦£¬²¢½«eaxÉèÖÃÎª-1,×÷Îª·µ»ØÖµ
-	push %ds
-	push %es
-	push %fs                        # ±£´æ¶ÎÑ¡Ôñ×ÓµÄÄÚÈİ£¬CSºÍIPÔÚÖ´ĞĞINTÖ¸ÁîÊ±¶¼ÒÑ¾­Ñ¹ÈëÕ»ÖĞ£¬IRETÊ±»Ö¸´
-	pushl %edx
-	pushl %ecx		                # push %ebx,%ecx,%edx as parameters
-	pushl %ebx		                # to the system call
-	movl $0x10,%edx		            # set up ds,es to kernel space, ÉèÖÃ
-	mov %dx,%ds                     # ÉèÖÃÊı¾İ¶ÎÎªÄÚºËÊı¾İ¶Î
-	mov %dx,%es                     # ÉèÖÃ¸½¼Ó¶ÎÎªÄÚºËÊı¾İ¶Î£¬ ´úÂë¶ÎÔÚÖ´ĞĞINTÖ¸ÁîÊ±ÒÑ¾­ÉèÖÃÁË
+	cmpl $nr_system_calls-1,%eax    # åˆ¤æ–­ç³»ç»Ÿè°ƒç”¨å·æ˜¯å¦åˆæ³•, eaxå­˜æ”¾çš„æ˜¯ç³»ç»Ÿè°ƒç”¨å·
+	ja bad_sys_call                 # å¦‚æœä¸åˆæ³•åˆ™è·³åˆ°bad_sys_callå¤„ï¼Œå¹¶å°†eaxè®¾ç½®ä¸º-1,ä½œä¸ºè¿”å›å€¼
+	push %ds						# ä¿æŠ¤ds
+	push %es						# ä¿æŠ¤es
+	push %fs                        # ä¿å­˜æ®µé€‰æ‹©å­çš„å†…å®¹ï¼ŒSS,ESP,CS,EIPåœ¨æ‰§è¡ŒINTæŒ‡ä»¤æ—¶éƒ½å·²ç»å‹å…¥æ ˆä¸­ï¼ŒIRETæ—¶æ¢å¤
+	pushl %edx						# ä¿æŠ¤edx
+	pushl %ecx		                # ä¿æŠ¤ecx
+	pushl %ebx		                # ä¿æŠ¤ebx
+	movl $0x10,%edx		            # set up ds,es to kernel spaceï¼Œä½¿ç”¨å†…æ ¸ç©ºé—´
+	mov %dx,%ds                     # è®¾ç½®æ•°æ®æ®µä¸ºå†…æ ¸æ•°æ®æ®µ
+	mov %dx,%es                     # è®¾ç½®é™„åŠ æ®µä¸ºå†…æ ¸æ•°æ®æ®µï¼Œ ä»£ç æ®µåœ¨æ‰§è¡ŒINTæŒ‡ä»¤æ—¶å·²ç»è®¾ç½®äº†
 	movl $0x17,%edx		            # fs points to local data space
-	mov %dx,%fs                     # ÉèÖÃFSÎªÓÃ»§¶ÎÑ¡Ôñ×Ó
-	call *sys_call_table(,%eax,4)   # callµØÖ·sys_call_table + eax * 4, ¼´µ÷ÓÃsys_fork³ÌĞò£¬´ËÊ±»á½«ÏÂÒ»ÌõÖ¸ÁîµÄEIPÈëÕ»
-	pushl %eax                      # ·µ»ØÖµ´æ·ÅÔÚeaxÖĞ
-	movl current,%eax               # È¡µ±Ç°½ø³ÌÖ¸Õë´æ·ÅÔÚeaxÖĞ
+	mov %dx,%fs                     # è®¾ç½®FSä¸ºç”¨æˆ·æ®µé€‰æ‹©å­
+	call *sys_call_table(,%eax,4)   # callåœ°å€sys_call_table + eax * 4, å³è°ƒç”¨sys_forkç¨‹åºï¼Œæ­¤æ—¶ä¼šå°†ä¸‹ä¸€æ¡æŒ‡ä»¤çš„EIPå…¥æ ˆ
+	pushl %eax                      # è¿”å›å€¼å­˜æ”¾åœ¨eaxä¸­
+	movl current,%eax               # å–å½“å‰è¿›ç¨‹æŒ‡é’ˆå­˜æ”¾åœ¨eaxä¸­
 	cmpl $0,state(%eax)		        # state 
-	jne reschedule                  # Èç¹ûstate²»µÈÓÚ0ÔòÔËĞĞÖØĞÂµ÷¶È³ÌĞò
-	cmpl $0,counter(%eax)		    # counter£¬Èç¹ûÔÚÔËĞĞ×´Ì¬µ«ÊÇÊ±¼äÆ¬ÓÃÍêÁËÒ²Ö´ĞĞµ÷ÓÃ³ÌĞò
+	jne reschedule                  # å¦‚æœstateä¸ç­‰äº0åˆ™è¿è¡Œé‡æ–°è°ƒåº¦ç¨‹åº
+	cmpl $0,counter(%eax)		    # counterï¼Œå¦‚æœåœ¨è¿è¡ŒçŠ¶æ€ä½†æ˜¯æ—¶é—´ç‰‡ç”¨å®Œäº†ä¹Ÿæ‰§è¡Œè°ƒç”¨ç¨‹åº
 	je reschedule
 ret_from_sys_call:
 	movl current,%eax		        # task[0] cannot have signals
-	cmpl task,%eax                  # ÅĞ¶ÏÊÇ²»ÊÇÈÎÎñ0£¬Èç¹ûÊÇÌøµ½±êºÅ3´¦ÔËĞĞ£¬ÈÎÎñ0²»Ö´ĞĞĞÅºÅ´¦Àí
+	cmpl task,%eax                  # åˆ¤æ–­æ˜¯ä¸æ˜¯ä»»åŠ¡0ï¼Œå¦‚æœæ˜¯è·³åˆ°æ ‡å·3å¤„è¿è¡Œï¼Œä»»åŠ¡0ä¸æ‰§è¡Œä¿¡å·å¤„ç†
 	je 3f
-	cmpw $0x0f,CS(%esp)		        # was old code segment supervisor ? Èç¹ûÊÇµ÷ÓÃÕßÊÇÄÚºË³ÌĞòÒ²²»½øĞĞĞÅºÅ´¦Àí
+	cmpw $0x0f,CS(%esp)		        # was old code segment supervisor ? å¦‚æœæ˜¯è°ƒç”¨è€…æ˜¯å†…æ ¸ç¨‹åºä¹Ÿä¸è¿›è¡Œä¿¡å·å¤„ç†
 	jne 3f
-	cmpw $0x17,OLDSS(%esp)		    # was stack segment = 0x17 ?  Èç¹ûÔ­¶ÑÕ»Ò²ÊÇÄÚºËÒ²ÍË³ö
+	cmpw $0x17,OLDSS(%esp)		    # was stack segment = 0x17 ?  å¦‚æœåŸå †æ ˆä¹Ÿæ˜¯å†…æ ¸ä¹Ÿé€€å‡º
 	jne 3f
-	movl signal(%eax),%ebx          # È¡ĞÅºÅÎ»Í¼
-	movl blocked(%eax),%ecx         # È¡ĞÅºÅÆÁ±ÎÎ»Í¼
-	notl %ecx                       # ĞÅºÅÆÁ±ÎÎ»Í¼È¡·´
-	andl %ebx,%ecx                  # »ñµÃĞÅºÅÎ»Í¼
-	bsfl %ecx,%ecx                  # Èç¹ûÎª0Ôò±íÊ¾Ã»ÓĞĞÅºÅ´¦Àí
+	movl signal(%eax),%ebx          # å–ä¿¡å·ä½å›¾
+	movl blocked(%eax),%ecx         # å–ä¿¡å·å±è”½ä½å›¾
+	notl %ecx                       # ä¿¡å·å±è”½ä½å›¾å–å
+	andl %ebx,%ecx                  # è·å¾—ä¿¡å·ä½å›¾
+	bsfl %ecx,%ecx                  # å¦‚æœä¸º0åˆ™è¡¨ç¤ºæ²¡æœ‰ä¿¡å·å¤„ç†
 	je 3f                           #   
 	btrl %ecx,%ebx
-	movl %ebx,signal(%eax)          # ĞÅºÅ
+	movl %ebx,signal(%eax)          # ä¿¡å·
 	incl %ecx
-	pushl %ecx
-	call do_signal                  # µ÷ÓÃĞÅºÅ´¦Àíº¯Êı
-	popl %eax
-3:	popl %eax
+	pushl %ecx						# ä¿¡å·å€¼
+	call do_signal                  # è°ƒç”¨ä¿¡å·å¤„ç†å‡½æ•°do_signal(ecx)ä¸ºå‚æ•°
+	popl %eax						# å¼¹å‡ºä¿¡å·å€¼
+3:	popl %eax						# æ¢å¤å¯„å­˜å™¨å¹¶æ¢å¤åˆ°ç”¨æˆ·ç©ºé—´æ‰§è¡Œ
 	popl %ebx
 	popl %ecx
 	popl %edx
@@ -130,7 +131,7 @@ ret_from_sys_call:
 	pop %ds
 	iret
 
-.align 2
+.align 4
 coprocessor_error:
 	push %ds
 	push %es
@@ -147,60 +148,80 @@ coprocessor_error:
 	pushl $ret_from_sys_call
 	jmp math_error
 
-.align 2
+.align 4
 switch_to_by_stack:
-    pushl %ebp                      # ÈëÕ»±£´æebp
-    movl %esp,%ebp                  # ½«µ±Ç°µÄÕ»Ö¸Õë´æ·ÅÔÚebpÖĞ
-    pushl %ecx                      # ÈëÕ»±£´æecx
-    pushl %ebx                      # ÈëÕ»±£´æebx
-    pushl %eax                      # ÈëÕ»±£´æeax
-    movl 8(%ebp),%ebx               # *(ebp + 8)´æ·ÅµÄÊÇpnext
-    cmpl %ebx,current               # ÅĞ¶ÏÒªÇĞ»»µÄÈÎÎñºÍµ±Ç°ÈÎÎñÊÇ²»ÊÇÒ»Ñù
-    je 1f                           # Èç¹ûÒ»ÑùÌø×ªµ½1´¦
-    # switch_to PCB
-    cli
-    movl %ebx,%eax                  # pnext¸³Öµ¸øebx
-	xchgl %eax,current              # ½»»»currentºÍeax£¬eax´æ·ÅµÄÊÇpnext£¬´ËÊ±current´æ·ÅµÄÊÇpnext
-    # rewrite TSS pointer
-    movl tss,%ecx                   # µ±Ç°tss¶ÎµØÖ·
-    addl $4096,%ebx                 # task structµÄ¶¥¶Ë
-    movl %ebx,4(%ecx)               # 4±íÊ¾esp0µÄÆ«ÒÆ£¬ÉèÖÃtssµÄÄÚºËÌ¬Ö¸ÕëÎªtaskµÄ¶¥¶Ë
-    # switch_to system core stack
-    movl %esp,stack_top(%eax)       # µ±Ç°esp´æ·Åµ½old task->stack_stop
-    movl 8(%ebp),%ebx               # ebxÎªpnext
-    movl stack_top(%ebx),%esp       # Ê¹ÓÃpnext»Ö¸´Õ»
-    # switch_to LDT
-	movl 12(%ebp), %ecx             # »ñÈ¡¾Ö²¿ÃèÊö·û
-    lldt %cx                        # ¼ÓÔØ¾Ö²¿ÃèÊö·û
-    movl $0x17,%ecx                 # ÉèÖÃfsÎª0x17
+	pushl %ebp                      # å…¥æ ˆä¿å­˜ebp
+	movl %esp,%ebp                  # å°†å½“å‰çš„æ ˆæŒ‡é’ˆå­˜æ”¾åœ¨ebpä¸­ï¼ŒCè¯­è¨€å‡½æ•°æ‰ç”¨è§„èŒƒ
+	pushl %edx						# å…¥æ ˆä¿å­˜edx
+	pushl %ecx                      # å…¥æ ˆä¿å­˜ecx
+	pushl %ebx                      # å…¥æ ˆä¿å­˜ebx
+	pushl %eax                      # å…¥æ ˆä¿å­˜eax
+	pushl %edi						# å…¥æ ˆä¿å­˜edi
+	pushl %esi						# å…¥æ ˆä¿å­˜esi
+	pushfl							# å…¥æ ˆä¿å­˜eflags
+	push %gs						# å…¥æ ˆä¿å­˜gs
+	push %fs						# å…¥æ ˆä¿å­˜fs
+	push %es						# å…¥æ ˆä¿å­˜es
+	push %ds						# å…¥æ ˆä¿å­˜ds
+	#
+	# ä»¥ä¸Šä»£ç å°±æ˜¯å¸¸è¯´çš„ä¿å­˜ç°åœº
+	#
+	movl 8(%ebp),%ebx               # *(ebp + 8)å­˜æ”¾çš„æ˜¯pnext, ebp = [EIP, CS, pnext, ldt, cr]
+	cmpl %ebx,current               # åˆ¤æ–­è¦åˆ‡æ¢çš„ä»»åŠ¡å’Œå½“å‰ä»»åŠ¡æ˜¯ä¸æ˜¯ä¸€æ ·
+	je 1f                           # å¦‚æœä¸€æ ·è·³è½¬åˆ°1å¤„
+	# switch_to PCB
+	cli
+	movl %ebx,%eax                  # pnextèµ‹å€¼ç»™ebx
+	xchgl %eax,current              # äº¤æ¢currentå’Œeaxï¼Œcurrentç›®å‰æ˜¯pnextäº†
+	# rewrite TSS pointer
+	movl tss,%ecx                   # å½“å‰tssæ®µåœ°å€
+	addl $4096,%ebx                 # ebxæ˜¯pnextï¼ˆtask structï¼‰çš„é¡¶ç«¯ï¼Œä¹Ÿå°±æ˜¯æ ˆé¡¶
+	movl %ebx,4(%ecx)               # 4è¡¨ç¤ºesp0çš„åç§»ï¼Œè®¾ç½®tssçš„å†…æ ¸æ€æŒ‡é’ˆä¸ºtaskçš„é¡¶ç«¯
+	# switch_to system core stack
+	movl %esp,stack_top(%eax)       # å½“å‰espå­˜æ”¾åˆ°old task->stack_stop
+	movl 8(%ebp),%ebx               # ebxä¸ºpnext
+	movl stack_top(%ebx),%esp       # ä½¿ç”¨pnextæ¢å¤æ ˆ
+	# switch_to LDT
+	movl 12(%ebp), %ecx             # è·å–å±€éƒ¨æè¿°ç¬¦
+	lldt %cx                        # åŠ è½½å±€éƒ¨æè¿°ç¬¦
+	movl $0x17,%ecx                 # è®¾ç½®fsä¸º0x17
 	mov %cx,%fs
-    # get pnext->page dir base
-    movl 16(%ebp), %ecx             # »ñÈ¡CR3
-    movl %ecx,%cr3                  # ÉèÖÃCR3
-    sti
-    # nonsense
-    cmpl %eax,last_task_used_math 
-    jne 1f
-    clts
-1:    
-    popl %eax
-    popl %ebx
-    popl %ecx
-    popl %ebp
-    ret
+	# get pnext->page dir base
+	movl 16(%ebp), %ecx             # è·å–CR3
+	movl %ecx,%cr3                  # è®¾ç½®CR3
+	sti
+	# nonsense
+	cmpl %eax,last_task_used_math 
+	jne 1f
+	clts
+1:   
+	#
+	# ä¸ºä»€ä¹ˆä¸ä¿å­˜SSï¼ŒSPï¼ŒCSï¼ŒIP
+	# åˆ‡æ¢è‚¯å®šå‘ç”Ÿå†…æ ¸æ€ï¼ŒSSä¸å‘ç”Ÿå˜åŒ–ï¼Œè€ŒSPåœ¨ä¿å­˜åœ¨è¿›ç¨‹çš„stack_topä¸­
+	# CS, IP é€šè¿‡å‡½æ•°è°ƒç”¨callæŒ‡ä»¤å·²ç»ä¿å­˜
+	# å› æ­¤ä¸ç”¨ä¿å­˜
+	# ä¸ºä»€ä¹ˆè¦ä¿å­˜eflagsï¼Œå› æ­¤eflagsä¿å­˜äº†ä¸€äº›æº¢å‡ºå‚æ•°ç­‰
+	# å¦‚ä¸‹ä»£ç å°±æ˜¯å¸¸è¯´çš„æ¢å¤ç°åœº
+	#
+	pop %ds
+	pop %es
+	pop %fs
+	pop %gs
+	popfl
+	popl %esi
+	popl %edi
+	popl %eax
+	popl %ebx
+	popl %ecx
+	popl %edx
+	popl %ebp
+	ret
 
-.align 2
+.align 4
 first_return_from_kernel: 
-    popl %edx
-    popl %edi
-    popl %esi
-    pop %gs
-    pop %fs
-    pop %es
-    pop %ds
-    iret
-
-.align 2
+	iret
+	
+.align 4
 device_not_available:
 	push %ds
 	push %es
@@ -228,7 +249,7 @@ device_not_available:
 	popl %ebp
 	ret
 
-.align 2
+.align 4
 timer_interrupt:
 	push %ds		                # save ds,es and put kernel data space
 	push %es		                # into them. %fs is used by _system_call
@@ -236,43 +257,43 @@ timer_interrupt:
 	pushl %edx		                # we save %eax,%ecx,%edx as gcc doesn't
 	pushl %ecx		                # save those across function calls. %ebx
 	pushl %ebx		                # is saved as we use that in ret_sys_call
-	pushl %eax                      # ÒÔÉÏ±£³Ö¸÷ÖÖ¼Ä´æÆ÷£¬ÒòÎªºóĞøµ÷ÓÃÁËret_from_sys_callÒò´ËĞèÒª¹¹ÔìÒ»¸öÕ»
-	movl $0x10,%eax                 # ÄÚºËÊı¾İ¶Î
-	mov %ax,%ds                     # dsÉèÖÃÎªÄÚºËÊı¾İ¶Î
-	mov %ax,%es                     # esÉèÖÃÎªÄÚºËÊı¾İ¶Î
+	pushl %eax                      # ä»¥ä¸Šä¿æŒå„ç§å¯„å­˜å™¨ï¼Œå› ä¸ºåç»­è°ƒç”¨äº†ret_from_sys_callå› æ­¤éœ€è¦æ„é€ ä¸€ä¸ªæ ˆ
+	movl $0x10,%eax                 # å†…æ ¸æ•°æ®æ®µ
+	mov %ax,%ds                     # dsè®¾ç½®ä¸ºå†…æ ¸æ•°æ®æ®µ
+	mov %ax,%es                     # esè®¾ç½®ä¸ºå†…æ ¸æ•°æ®æ®µ
 	movl $0x17,%eax                 #
-	mov %ax,%fs                     # fsÉèÖÃÎªÓÃ»§Êı¾İ¶Ï
-	incl jiffies                    # Ôö¼Ójiffies¼ÆÊı
-	movb $0x20,%al		            # EOI to interrupt controller #1£¬½áÊøÖĞ¶ÏÖ¸Áî
+	mov %ax,%fs                     # fsè®¾ç½®ä¸ºç”¨æˆ·æ•°æ®æ–­
+	incl jiffies                    # å¢åŠ jiffiesè®¡æ•°
+	movb $0x20,%al		            # EOI to interrupt controller #1ï¼Œç»“æŸä¸­æ–­æŒ‡ä»¤
 	outb %al,$0x20                  #
-	movl CS(%esp),%eax              # ´Ó¶ÑÕ»ÖĞÈ¡³öCSµÄÖµ
+	movl CS(%esp),%eax              # ä»å †æ ˆä¸­å–å‡ºCSçš„å€¼
 	andl $3,%eax		            # %eax is CPL (0 or 3, 0=supervisor)
-	pushl %eax                      # eax×÷Îª²ÎÊıÈëÕ»
+	pushl %eax                      # eaxä½œä¸ºå‚æ•°å…¥æ ˆ
 	call do_timer		            # 'do_timer(long CPL)' does everything from
-	addl $4,%esp		            # task switching to accounting ... »Ö¸´²ÎÊı
+	addl $4,%esp		            # task switching to accounting ... æ¢å¤å‚æ•°
 	jmp ret_from_sys_call
 
-.align 2
+.align 4
 sys_execve:
-	lea EIP(%esp),%eax              # È¡ÏµÍ³µ÷ÓÃ·µ»ØµØÖ·µÄµØÖ·
-	pushl %eax                      # ½«ÏµÍ³µ÷ÓÃ·µ»ØµØÖ·µÄµØÖ·ÈëÕ»×÷ÎªµÚÒ»¸ö²ÎÊı
-	call do_execve                  # Ö´ĞĞdo_execveµ÷ÓÃ
-	addl $4,%esp                    # ĞŞ¸´Õ»
-	ret                             # ·µ»Ø
+	lea EIP(%esp),%eax              # å–ç³»ç»Ÿè°ƒç”¨è¿”å›åœ°å€çš„åœ°å€
+	pushl %eax                      # å°†ç³»ç»Ÿè°ƒç”¨è¿”å›åœ°å€çš„åœ°å€å…¥æ ˆä½œä¸ºç¬¬ä¸€ä¸ªå‚æ•°
+	call do_execve                  # æ‰§è¡Œdo_execveè°ƒç”¨
+	addl $4,%esp                    # ä¿®å¤æ ˆ
+	ret                             # è¿”å›
 
-.align 2
+.align 4
 sys_fork:
-	call find_empty_process         # Ñ°ÕÒÒ»¸ö¿ÕµÄtask_struct
-	testl %eax,%eax                 # ²âÊÔeaxÊÇ¸ºÊı»¹ÊÇ0£¬Èç¹ûÊÇ¸ºÊı»òÕß0£¬ÔòÌø×ªÖÁ1±êºÅ
+	call find_empty_process         # å¯»æ‰¾ä¸€ä¸ªç©ºçš„task_struct
+	testl %eax,%eax                 # æµ‹è¯•eaxæ˜¯è´Ÿæ•°è¿˜æ˜¯0ï¼Œå¦‚æœæ˜¯è´Ÿæ•°æˆ–è€…0ï¼Œåˆ™è·³è½¬è‡³1æ ‡å·
 	js 1f
-	push %gs                        # push gs esi edi ebpÃ»Ê²Ã´Êµ¼ÊÒâË¼£¬Ö»ÊÇÏë½«µ±Ç°±»ÖĞ¶ÏµÄÓÃ»§½ø³ÌµÄÊı¾İ×÷Îª²ÎÊı´«µİµ½copy_processÖĞ
+	push %gs                        # push gs esi edi ebpæ²¡ä»€ä¹ˆå®é™…æ„æ€ï¼Œåªæ˜¯æƒ³å°†å½“å‰è¢«ä¸­æ–­çš„ç”¨æˆ·è¿›ç¨‹çš„æ•°æ®ä½œä¸ºå‚æ•°ä¼ é€’åˆ°copy_processä¸­
 	pushl %esi
 	pushl %edi
 	pushl %ebp
-	pushl %eax                      # eaxÊÇ½ø³ÌºÅ£¬Ò²¾ÍÊÇfind_empty_processµÄ·µ»ØÖµ£¬ÎªÊı×éµÄÏÂ±ê
-	call copy_process               # ÈëÕ»£¬ÎªÊ²Ã´ºóÃæÊÇ20, ÎÒ²Â²âÓ¦¸Ãpush %gsÒ²ÊÇÕ¼ÓÃ4¸ö×Ö½Ú£¬Ö»ÊÇ¸ßµØÖ·Êı¾İÎŞĞ§
-	addl $20,%esp                   # »¹Ô­Õ»Ö¸Õë, ÒòÎªÇ°ÃæÍ¨¹ıÕ»´«µİÁËcopy_processµÄ²ÎÊı
-1:	ret                             # ×Ó³ÌĞò·µ»Ø
+	pushl %eax                      # eaxæ˜¯è¿›ç¨‹å·ï¼Œä¹Ÿå°±æ˜¯find_empty_processçš„è¿”å›å€¼ï¼Œä¸ºæ•°ç»„çš„ä¸‹æ ‡
+	call copy_process               # å…¥æ ˆï¼Œä¸ºä»€ä¹ˆåé¢æ˜¯20, æˆ‘çŒœæµ‹åº”è¯¥push %gsä¹Ÿæ˜¯å ç”¨4ä¸ªå­—èŠ‚ï¼Œåªæ˜¯é«˜åœ°å€æ•°æ®æ— æ•ˆ
+	addl $20,%esp                   # è¿˜åŸæ ˆæŒ‡é’ˆ, å› ä¸ºå‰é¢é€šè¿‡æ ˆä¼ é€’äº†copy_processçš„å‚æ•°
+1:	ret                             # å­ç¨‹åºè¿”å›
 
 hd_interrupt:
 	pushl %eax

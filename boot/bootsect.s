@@ -1,13 +1,14 @@
 # 
-# BIOSÏµÍ³µ÷ÓÃ
-# 80386ÔÚÊµÄ£Ê½ÏÂËäÈ»ÊÇ16Î»µÄµØÖ·£¬µ«ÊÇ¾­¹ı¶ÎÓ³Éäºó¿ÉÒÔĞÎ³É20Î»µÄµØÖ·¹²Ñ°Ö·1MBµÄµØÖ·¿Õ¼ä
-# BOIS»áÔÚµØÖ·0´¦½¨Á¢1KB×Ö½ÚµÄÖĞ¶ÏÏòÁ¿±í£¬Ã¿¸öÖĞ¶ÏÏòÁ¿Ê¹ÓÃ4¸ö×Ö½ÚµÄ¿Õ¼ä£¬
-# Ç°Á½¸ö×Ö½ÚÎª¶ÎµØÖ·£¬ºóÁ½¸ö×Ö½ÚÎªÆ«ÒÆµØÖ·£¬Òò´ËÒ»¹²256¸öÖĞ¶ÏÏòÁ¿
-# ËùÎ½BIOSµ÷ÓÃ¾ÍÊÇÊ¹ÓÃBIOSµÄÖĞ¶Ï¹¦ÄÜÀ´Ö´ĞĞÒ»Ğ©ÓÃ»§ÏëÒªµÄ²Ù×÷
+# BIOSç³»ç»Ÿè°ƒç”¨
+# 80386åœ¨å®æ¨¡å¼ä¸‹è™½ç„¶æ˜¯16ä½çš„åœ°å€ï¼Œä½†æ˜¯ç»è¿‡æ®µæ˜ å°„åå¯ä»¥å½¢æˆ20ä½çš„åœ°å€å…±å¯»å€1MBçš„åœ°å€ç©ºé—´
+# BOISä¼šåœ¨åœ°å€0å¤„å»ºç«‹1KBå­—èŠ‚çš„ä¸­æ–­å‘é‡è¡¨ï¼Œæ¯ä¸ªä¸­æ–­å‘é‡ä½¿ç”¨4ä¸ªå­—èŠ‚çš„ç©ºé—´ï¼Œ
+# å‰ä¸¤ä¸ªå­—èŠ‚ä¸ºæ®µåœ°å€ï¼Œåä¸¤ä¸ªå­—èŠ‚ä¸ºåç§»åœ°å€ï¼Œå› æ­¤ä¸€å…±256ä¸ªä¸­æ–­å‘é‡
+# BIOSå¯åŠ¨åä¼šå»ºç«‹åä¸­æ–­å‘é‡è¡¨ç”¨äºæä¾›ä¸€äº›åŸºæœ¬çš„åŠŸèƒ½
+# æ‰€è°“BIOSè°ƒç”¨å°±æ˜¯ä½¿ç”¨BIOSçš„ä¸­æ–­åŠŸèƒ½æ¥æ‰§è¡Œä¸€äº›ç”¨æˆ·æƒ³è¦çš„æ“ä½œ
 # 
-# ÔÚAT»ã±àÀï£¬EAX±íÊ¾32Î»¼Ä´æÆ÷£¬AX±íÊ¾16Î»¼Ä´æÆ÷£¬AH£¬AL±íÊ¾8Î»¼Ä´æÆ÷
+# åœ¨ATæ±‡ç¼–é‡Œï¼ŒEAXè¡¨ç¤º32ä½å¯„å­˜å™¨ï¼ŒAXè¡¨ç¤º16ä½å¯„å­˜å™¨ï¼ŒAHï¼ŒALè¡¨ç¤º8ä½å¯„å­˜å™¨
 #
-# .code16 ±íÊ¾ºóÃæÊÇ16Î»µÄ»ã±à´úÂë
+# .code16 è¡¨ç¤ºåé¢æ˜¯16ä½çš„æ±‡ç¼–ä»£ç 
 #
 #
 	.code16
@@ -18,23 +19,23 @@
 # 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 # versions of linux
 #
-# SYSSIZEÊÇÒª¼ÓÔØµÄ½ÚÊı£¨16¸ö×Ö½ÚÎª1½Ú£©0x3000*16Ò²¾ÍÊÇ192KBµÄ´óĞ¡£¬
-# ¶ÔÓÚµ±Ç°µÄÄÚºËÀ´ËµÒÑ¾­×ã¹»ÁË
+# SYSSIZEæ˜¯è¦åŠ è½½çš„èŠ‚æ•°ï¼ˆ16ä¸ªå­—èŠ‚ä¸º1èŠ‚ï¼‰0x3000*16ä¹Ÿå°±æ˜¯192KBçš„å¤§å°ï¼Œ
+# å¯¹äºå½“å‰çš„å†…æ ¸æ¥è¯´å·²ç»è¶³å¤Ÿäº†
 #
 	.equ SYSSIZE, 0x3000
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
 #
-# ±àÒëÏµÍ³±àÒëµÄ¾µÏñ´æ·Å¸ñÊ½Îª£º
+# ç¼–è¯‘ç³»ç»Ÿç¼–è¯‘çš„é•œåƒå­˜æ”¾æ ¼å¼ä¸ºï¼š
 # | 512 bootsect | 512*4 setup | system(head,kernel} |
 #
-# BOIS»á½«Æô¶¯Éè±¸µÄÇ°512×Ö½Ú¿½±´ÖÁÄÚ´æµÄ0x7c00´¦£¬²¢Ìø×ªµ½´Ë´¦ÔËĞĞ£¬
-# bootsect³ÌĞòÖ÷Òª½«×Ô¼º£¨512¸ö×Ö½Ú£©°áÒÆµ½0x90000(576K)´¦£¬
-# ´ÓÆô¶¯Éè±¸¼ÌĞø¶ÁÈ¡setupÄ£¿é£¬´æ·ÅÔÚ×Ô¼ººóÃæ£¬Ò²¾ÍÊÇ0x90200µØÖ·´¦£¨576.5K£©´¦
-# ´ËÊ±bootsectºÍsetupµÄ½áÎ²µØÖ·Îª0x90a00
-# bootsectºÍsetupÄ£¿éÒ»¹²Õ¼ÓÃ2.5KBµÄ¿Õ¼ä£¬ÆäÖĞbootsectÕ¼ÓÃ0.5KB£¬setupÕ¼ÓÃ2KB
+# BOISä¼šå°†å¯åŠ¨è®¾å¤‡çš„å‰512å­—èŠ‚æ‹·è´è‡³å†…å­˜çš„0x7c00å¤„ï¼Œå¹¶è·³è½¬åˆ°æ­¤å¤„è¿è¡Œï¼Œ
+# bootsectç¨‹åºä¸»è¦å°†è‡ªå·±ï¼ˆ512ä¸ªå­—èŠ‚ï¼‰æ¬ç§»åˆ°0x90000(576K)å¤„ï¼Œ
+# ä»å¯åŠ¨è®¾å¤‡ç»§ç»­è¯»å–setupæ¨¡å—ï¼Œå­˜æ”¾åœ¨è‡ªå·±åé¢ï¼Œä¹Ÿå°±æ˜¯0x90200åœ°å€å¤„ï¼ˆ576.5Kï¼‰å¤„
+# æ­¤æ—¶bootsectå’Œsetupçš„ç»“å°¾åœ°å€ä¸º0x90a00
+# bootsectå’Œsetupæ¨¡å—ä¸€å…±å ç”¨2.5KBçš„ç©ºé—´ï¼Œå…¶ä¸­bootsectå ç”¨0.5KBï¼Œsetupå ç”¨2KB
 #
-# ÒÔÉÏµÄÊı¾İ¶ÁÈ¡¶¼Ê¹ÓÃÁËBIOSµ÷ÓÃ
+# ä»¥ä¸Šçš„æ•°æ®è¯»å–éƒ½ä½¿ç”¨äº†BIOSè°ƒç”¨
 #
 #
 #
@@ -54,9 +55,6 @@
 # loads pretty fast by getting whole sectors at a time whenever possible.
 #
 #
-#
-#
-#
 
 	.global _start, begtext, begdata, begbss, endtext, enddata, endbss
 	.text
@@ -66,7 +64,14 @@
 	.bss
 	begbss:
 	.text
-
+#
+# SETUPLEN è¡¨ç¤ºsetupæ¨¡å—å ç”¨sectorsçš„æ•°é‡ï¼Œä¸€ä¸ªsectorsä¸º512å­—èŠ‚
+# BOOTSEG è¡¨ç¤ºbootsectæ¨¡å—çš„åŸå§‹è¿è¡Œåœ°å€
+# INITSEG è¡¨ç¤ºbootsectæ¨¡å—æ¬ç§»åçš„è¿è¡Œåœ°å€
+# SETUPSEG è¡¨ç¤ºsetupæ¨¡å—çš„è¿è¡Œåœ°å€
+# SYSEG è¡¨ç¤ºsystemæ¨¡å—çš„è¿è¡Œåœ°å€ï¼Œsystemæœ€ç»ˆä¼šè¢«æ¬ç§»åˆ°0åœ°å€
+# ENDSEG è¡¨ç¤ºsystemæ¨¡å—çš„ç»“æŸåœ°å€
+#
 	.equ SETUPLEN, 4				# nr of setup-sectors
 	.equ BOOTSEG, 0x07c0			# original address of boot-sector
 	.equ INITSEG, 0x9000			# we move boot here - out of the way
@@ -76,24 +81,30 @@
 
 # ROOT_DEV:	0x000 - same type of floppy as boot.
 #		0x301 - first partition on first drive etc
+# 0x301 è¡¨ç¤ºç¡¬ç›˜çš„ç¬¬ä¸€ä¸ªåˆ†åŒº
+# 0x21D è¡¨ç¤ºè½¯ç›˜çš„ç¬¬ä¸€ä¸ªåˆ†åŒº
+#
 	.equ ROOT_DEV, 0x301
 #	.equ ROOT_DEV, 0x21D
 #
-# the code will be copy to 0x7c00 and running
+
 #
-# ÎÒ×¢ÊÍÁËÕâ¾ä»°£¬ÏµÍ³ÈÔÈ»¿ÉÒÔ¹¤×÷
-# ljmp    $BOOTSEG, $_start
+# ç³»ç»Ÿå¯åŠ¨åï¼ŒBIOSä¼šå°†å¯åŠ¨è®¾å¤‡çš„å‰512å­—èŠ‚æ‹·è´è‡³0x7c00å¤„å¹¶è¿è¡Œ
+# åœ¨ç¼–è¯‘bootsectæ¨¡å—ä¸­ï¼Œæˆ‘ä»¬å‘ç°äº†é“¾æ¥å‚æ•°-Ttext 0 -e _startè¡¨ç¤ºèµ·å§‹åœ°å€ä¸º0ï¼Œç¨‹åºå…¥å£ä¸º_start
 # 
+# è®¾ç½®DSä¸º0x07c0ï¼Œè®¾ç½®ESä¸º0x9000
+# å°†SIå’ŒDIæ¸…é›¶
+# movswå°†DS:SIåœ°å€å¤„çš„æ•°æ®æ‹·è´åˆ°ES:DIå¤„ï¼ŒSIå’ŒDIä¼šè‡ªåŠ¨é€’å¢ï¼Œæ‹·è´çš„æ¬¡æ•°å­˜æ”¾åœ¨CXå¯„å­˜å™¨ä¸­
+# å› æ­¤ä¸‹é¢çš„ä»£ç æ„æ€æ˜¯ï¼Œ
+# å°†0x7c00çš„æ•°æ®æ‹·è´è‡³0x90000(576K)å¤„, æ¯æ¬¡æ‹·è´2ä¸ªå­—èŠ‚ï¼Œå…±æ‹·è´256æ¬¡ï¼Œ512ä¸ªå­—èŠ‚
+# ä¹Ÿå°±æ˜¯å°†bootsectä»0x07c00æ‹·è´åˆ°0x90000(576K)å¤„
 #
-# ÏµÍ³Æô¶¯ºó£¬BIOS»á½«Æô¶¯Éè±¸µÄÇ°512×Ö½Ú¿½±´ÖÁ0x7c00´¦²¢ÔËĞĞ
-# ÔÚ±àÒëbootsectÄ£¿éÖĞ£¬ÎÒÃÇ·¢ÏÖÁËÁ´½Ó²ÎÊı-Ttext 0 -e _start±íÊ¾ÆğÊ¼µØÖ·Îª0£¬³ÌĞòÈë¿ÚÎª_start
-# 
-# ÉèÖÃDSÎª0x07c0£¬ÉèÖÃESÎª0x9000
-# ½«SIºÍDIÇåÁã
-# movsw½«DS:SIµØÖ·´¦µÄÊı¾İ¿½±´µ½ES:DI´¦£¬SIºÍDI»á×Ô¶¯µİÔö£¬¿½±´µÄ´ÎÊı´æ·ÅÔÚCX¼Ä´æÆ÷ÖĞ
-# Òò´ËÏÂÃæµÄ´úÂëÒâË¼ÊÇ£¬
-# ½«0x7c00µÄÊı¾İ¿½±´ÖÁ0x90000(576K)´¦, Ã¿´Î¿½±´2¸ö×Ö½Ú£¬¹²¿½±´256´Î£¬512¸ö×Ö½Ú
-# Ò²¾ÍÊÇ½«bootsect´Ó0x07c00¿½±´µ½0x90000(576K)´¦
+# ä¸ºä»€ä¹ˆè¦æ‹·è´åˆ°0x90000(576K)å¤„,è¿™æ˜¯å› ä¸ºsystemä¼šè¢«æ‹·è´åˆ°0x10000(64K)å¤„
+# è€ŒLinusåœ¨å†™è¿™ä¸ªç‰ˆæœ¬çš„Linuxçš„æ—¶å€™å‡è®¾å†…æ ¸çš„å¤§å°ä¸º512K,è¿™ä¸ªå¯ä»¥åœ¨åé¢çš„æ³¨é‡Šé‡Œçœ‹åˆ°
+# 64K+512Kå°±æ˜¯576K
+# é‚£ä¸ºä»€ä¹ˆsystemè¦æ‹·è´åˆ°0x10000è€Œä¸æ˜¯ç›´æ¥æ‹·è´åˆ°0x00000åœ°å€å‘¢ï¼Œ
+# è¿™æ˜¯å› ä¸ºåœ¨setupæ¨¡å—ä¸­éœ€è¦ç”¨åˆ°BIOSæ‰ç”¨è·å–ä¸€äº›ç¡¬ä»¶å‚æ•°ï¼Œè€ŒBIOSå¯èƒ½å ç”¨äº†64Kçš„åœ°å€
+# è¿™å°±æ˜¯ä¸ºä»€ä¹ˆåœ¨setupçš„æœ€ååˆå°†systemæ¨¡å—æ‹·è´åˆ°0x00000åœ°å€çš„åŸå› 
 #
 _start:
 	mov	$BOOTSEG, %ax				# BOOTSEG 0x07c0
@@ -106,8 +117,9 @@ _start:
 	rep								# execute repeat util CX == 0, total 512 bytes
 	movsw							# copy 2Bytes from DS:SI(0x07c00) to ES:DI(0x90000) 512 bytes
 
-# Ìø×ªÖÁ$INITSEC:go´¦ÔËĞĞ£¬INITSEG¶¨ÒåÎª0x9000
-# Òò´ËÒ²¾ÍÊÇÌø×ªÖÁÏÂÃæµÄ±êºÅ¡°go¡±µÄµØ·½¿ªÊ¼ÔËĞĞ£¬ÕâÌõÓï¾ä»á½«CSÉèÖÃÎªINITSEG
+# 
+# è·³è½¬è‡³$INITSEC:goå¤„è¿è¡Œï¼ŒINITSEGå®šä¹‰ä¸º0x9000
+# å› æ­¤ä¹Ÿå°±æ˜¯è·³è½¬è‡³ä¸‹é¢çš„æ ‡å·â€œgoâ€çš„åœ°æ–¹å¼€å§‹è¿è¡Œï¼Œè¿™æ¡è¯­å¥ä¼šå°†CSè®¾ç½®ä¸ºINITSEG
 #
 #	
 	ljmp $INITSEG, $go				# jump 0x9000:go
@@ -116,9 +128,9 @@ go:	mov	%cs, %ax					# CS = 0x9000
 	mov	%ax, %es					# ES = 0x9000
 	mov	%ax, %ss					# SS = 0x9000, put stack top at 0x9ff00
 #
-# ´Ë´¦ÉèÖÃÕ»¶¥µØÖ·Îª0x9ff00
-# ÒòÎªbootsecÕ¼ÓÃ512×Ö½Ú£¬setupÕ¼ÓÃ512*4¸ö×Ö½Ú£¬´Ó0x90000¿ªÊ¼´æ·ÅbootsectºÍsetup£¬Ä©Î²µØÖ·Îª0x90a00
-# ¶øx86µÄÕ»ÎªFDÕ»£¬Âú¼õÕ»£¬Òò´Ë´Ó0x90a00µ½0x9ff00µÄ¿Õ¼ä¶¼ÊÇ¿ÉÒÔÓÃ£¬Õ»¶¥Ö¸Õë³õÊ¼ÖµÎª0x9ff00
+# æ­¤å¤„è®¾ç½®æ ˆé¡¶åœ°å€ä¸º0x9ff00
+# å› ä¸ºbootsecå ç”¨512å­—èŠ‚ï¼Œsetupå ç”¨512*4ä¸ªå­—èŠ‚ï¼Œä»0x90000å¼€å§‹å­˜æ”¾bootsectå’Œsetupï¼Œæœ«å°¾åœ°å€ä¸º0x90a00
+# è€Œx86çš„æ ˆä¸ºFDæ ˆï¼Œæ»¡å‡æ ˆï¼Œå› æ­¤ä»0x90a00åˆ°0x9ff00çš„ç©ºé—´éƒ½æ˜¯å¯ä»¥ç”¨ï¼Œæ ˆé¡¶æŒ‡é’ˆåˆå§‹å€¼ä¸º0x9ff00
 #
 	mov	$0xff00, %sp				# x86 FD stack [full decrease stack]
 	                                # we will copy 4 sectors(2048) form boot device
@@ -127,11 +139,11 @@ go:	mov	%cs, %ax					# CS = 0x9000
 # load the setup-sectors directly after the bootblock.
 # Note that 'es' is already set up.
 #
-# ÏÂÃæÒ»¶Î´úÂëÊ¹ÓÃBOISÏµÍ³µ÷ÓÃ´ÓµÚ¶ş¸öÉÈÇø¶Á£¬¹²¶ÁÈ¡4¸öÉÈÇø£¬2048¸ö×Ö½Ú£¬ÎÒÃÇ
-# Í¨¹ıÇ°ÃæµÄ×¢ÊÍ¿ÉÊÇÖ±µ½setupÄ£¿é£¬¸ÕºÃÕ¼ÓÃ4¸öÉÈÇø£¬ÏÂÃæ´úÂëµÄ×óÓÒ¾ÍÊÇ´ÓµÚ¶ş¸ö
-# ÉÈÇø¿ªÊ¼¶ÁÈ¡Êı¾İ£¬´æ·ÅÔÚµ±Ç°Êı¾İ¶ÎµÄ0x200´¦£¬Ò²¾ÍÊÇ0x90200´¦£¬¶ÁÈ¡³É¹¦ºóÌôÕ½ÖÁ
-# ok_load_setup´¦¿ªÊ¼ÔËĞĞ£¬¶ÁÈ¡Ê§°Üºó¼ÌĞø½øĞĞ³¢ÊÔ¶ÁÈ¡
-# Ä¿Ç°ÎÒÃÇÖ»ĞèÖªµÀÆäº¬Òå¼´¿É£¬¾ßÌå¿É²Î¿¼<LinuxÄÚºËÍêÈ«×¢ÊÍµÄ½²½â>
+# ä¸‹é¢ä¸€æ®µä»£ç ä½¿ç”¨BOISç³»ç»Ÿè°ƒç”¨ä»ç¬¬äºŒä¸ªæ‰‡åŒºè¯»ï¼Œå…±è¯»å–4ä¸ªæ‰‡åŒºï¼Œ2048ä¸ªå­—èŠ‚ï¼Œæˆ‘ä»¬
+# é€šè¿‡å‰é¢çš„æ³¨é‡Šå¯æ˜¯ç›´åˆ°setupæ¨¡å—ï¼Œåˆšå¥½å ç”¨4ä¸ªæ‰‡åŒºï¼Œä¸‹é¢ä»£ç çš„å·¦å³å°±æ˜¯ä»ç¬¬äºŒä¸ª
+# æ‰‡åŒºå¼€å§‹è¯»å–æ•°æ®ï¼Œå­˜æ”¾åœ¨å½“å‰æ•°æ®æ®µçš„0x200å¤„ï¼Œä¹Ÿå°±æ˜¯0x90200å¤„ï¼Œè¯»å–æˆåŠŸåæŒ‘æˆ˜è‡³
+# ok_load_setupå¤„å¼€å§‹è¿è¡Œï¼Œè¯»å–å¤±è´¥åç»§ç»­è¿›è¡Œå°è¯•è¯»å–
+# ç›®å‰æˆ‘ä»¬åªéœ€çŸ¥é“å…¶å«ä¹‰å³å¯ï¼Œå…·ä½“å¯å‚è€ƒ<Linuxå†…æ ¸å®Œå…¨æ³¨é‡Šçš„è®²è§£>
 #
 load_setup:
 	mov	$0x0000, %dx				# drive 0, head 0
@@ -145,22 +157,23 @@ load_setup:
 	int	$0x13
 	jmp	load_setup
     
-
 ok_load_setup:
 
+#
 # Get disk drive parameters, specifically nr of sectors/track
-
+# è·å–å½“å‰è½¯ç›˜é©±åŠ¨çš„å‚æ•°æ”¾åœ¨sectorså¤„
+#
 	mov	$0x00, %dl
 	mov	$0x0800, %ax				# AH=8 is get drive parameters
 	int	$0x13
 	mov	$0x00, %ch
-	#seg cs
 	mov	%cx, %cs:sectors+0			# %cs means sectors is in %cs
 	mov	$INITSEG, %ax
 	mov	%ax, %es					# restore ES
 #
-# Ê¹ÓÃÏµÍ³µ÷ÓÃ´òÓ¡£ºLoading system ...
+# ä½¿ç”¨ç³»ç»Ÿè°ƒç”¨æ‰“å°ï¼šLoading system ...
 # Print some inane message
+#
 	mov	$0x03, %ah					# read cursor pos
 	xor	%bh, %bh
 	int	$0x10
@@ -171,56 +184,58 @@ ok_load_setup:
 	mov	$0x1301, %ax				# write string, move cursor
 	int	$0x10
 
-# ¶ÁÈ¡SYSÄ£¿é£¬´æ·ÅÔÚµØÖ·0x10000£¨64K£©¿ªÊ¼µÄµØ·½£¬
-# ¸ù¾İÇ°ÃæµÄSYSSIZE¶¨ÒåÎÒÃÇÖªµÀÒ»¹²¶ÁÈ¡0x3000*16¸ö×Ö½ÚÒ²¾ÍÊÇ192KBµÄÄÚÈİ
-# ¶ÔÓÚÎÒÃÇÀ´ËµÒÑ¾­¹»ÁË£¬ÎÒÃÇ¿ÉÒÔ¼ÆËã³öµ±Ç°µÄ×î´óµØÖ·Îª64 + 192 = 256KB£¬
-# ²»ÄÜ¸²¸Çµ½bootsectºÍsetupÄ£¿éµÄÆğÊ¼µØÖ·
+# 
+# è¯»å–SYSæ¨¡å—ï¼Œå­˜æ”¾åœ¨åœ°å€0x10000ï¼ˆ64Kï¼‰å¼€å§‹çš„åœ°æ–¹ï¼Œ
+# æ ¹æ®å‰é¢çš„SYSSIZEå®šä¹‰æˆ‘ä»¬çŸ¥é“ä¸€å…±è¯»å–0x3000*16ä¸ªå­—èŠ‚ä¹Ÿå°±æ˜¯192KBçš„å†…å®¹
+# å¯¹äºæˆ‘ä»¬æ¥è¯´å·²ç»å¤Ÿäº†ï¼Œæˆ‘ä»¬å¯ä»¥è®¡ç®—å‡ºå½“å‰çš„æœ€å¤§åœ°å€ä¸º64 + 192 = 256KBï¼Œ
+# ä¸èƒ½è¦†ç›–åˆ°bootsectå’Œsetupæ¨¡å—çš„èµ·å§‹åœ°å€
 # ok, we've written the message, now
 # we want to load the system (at 0x10000)
-
+#
 	mov	$SYSSEG, %ax				# AX = 0x1000
 	mov	%ax, %es					# ES = 0x1000 segment of 0x010000
-	call read_it
-	call kill_motor
+	call read_it					# è¯»å–systemæ¨¡å—åˆ°0x10000å¤„,çŸ¥é“å°±è¡Œï¼Œæš‚æ—¶ä¸å…³æ³¨
+	call kill_motor					# å…³é—­é©±åŠ¨
 
+#
 # After that we check which root-device to use. If the device is
 # defined (#= 0), nothing is done and the given device is used.
 # Otherwise, either /dev/PS0 (2,28) or /dev/at0 (2,8), depending
 # on the number of sectors that the BIOS reports currently.
+#
 
-	#seg cs
-	mov	%cs:root_dev+0, %ax
-	cmp	$0, %ax
-	jne	root_defined
-	#seg cs
-	mov	%cs:sectors+0, %bx
+	mov	%cs:root_dev+0, %ax			# è·å–root_devçš„å‚æ•°
+	cmp	$0, %ax						# å’Œ0è¿›è¡Œå¯¹æ¯”
+	jne	root_defined				# å¦‚æœä¸ä¸º0è¯´æ˜ï¼Œroot_devå·²ç»å®šä¹‰ï¼Œè·³è½¬åˆ°root_definedå¤„ï¼Œroot_devçš„å€¼å­˜æ”¾åœ¨axå¯„å­˜å™¨ä¸­
+	mov	%cs:sectors+0, %bx			# å¦åˆ™è·å–sectorså¤„çš„æ•°æ®ï¼Œæ ¹æ®sectorsçš„æ•°æ®åˆ¤æ–­æ˜¯1.2Mè¿˜æ˜¯1.44Mçš„è½¯ç›˜
 	mov	$0x0208, %ax				# /dev/ps0 - 1.2Mb
-	cmp	$15, %bx
-	je	root_defined
+	cmp	$15, %bx					# 1.2Mçš„sectorsæ•°ç›®æ˜¯15ä¸ª
+	je	root_defined				# å¦‚æœç›¸ç­‰è·³è½¬åˆ°root_definedå¤„
 	mov	$0x021c, %ax				# /dev/PS0 - 1.44Mb
-	cmp	$18, %bx
-	je	root_defined
+	cmp	$18, %bx					# 1.44Mçš„sectorsçš„æ•°ç›®æ˜¯18ä¸ª
+	je	root_defined				# å¦‚æœç›¸ç­‰è·³è½¬åˆ°root_definedå¤„
 undef_root:
 	jmp undef_root
 root_defined:
-	#seg cs
-	mov	%ax, %cs:root_dev+0
+	mov	%ax, %cs:root_dev+0			# å°†axçš„å€¼å­˜æ”¾åœ¨root_devå¤„
 # 
-# µ±ËùÓĞµÄÄ£¿é¶¼¼ÓÔØÍê³Éºó£¬Ìø×ªµ½0x09200µØÖ·´¦ÔËĞĞ£¬ÎÒÃÇÖªµÀ´Ë´¦ÊÇsetupµÄµØÖ·
-# Ìø×ªµ½ SETUPSEGµÄ 0 Æ«ÒÆ¿ªÊ¼ÔËĞĞ£¬SETUPSEGÎª0x9020£¬¼´µØÖ·0x90200£¬
+# å½“æ‰€æœ‰çš„æ¨¡å—éƒ½åŠ è½½å®Œæˆåï¼Œè·³è½¬åˆ°0x09200åœ°å€å¤„è¿è¡Œï¼Œæˆ‘ä»¬çŸ¥é“æ­¤å¤„æ˜¯setupçš„åœ°å€
+# è·³è½¬åˆ° SETUPSEGçš„ 0 åç§»å¼€å§‹è¿è¡Œï¼ŒSETUPSEGä¸º0x9020ï¼Œå³åœ°å€0x90200ï¼Œ
 #
-# Ä¿Ç°£¬
-# bootsectÔÚ0x90000µØÖ·´¦¹²512×Ö½Ú
-# setupÔÚ0x90200µØÖ·´¦¹²2KB
-# systemÄ£¿éÔÚ0x10000(64KB)µØÖ·´¦¹²192KB×Ö½Ú
-# ÒÔÉÏ¶¼ÔÚÊµÄ£Ê½µÄ1MB·ÃÎÊ¿Õ¼äÄÚ
+# ç›®å‰ï¼Œ
+# bootsectåœ¨0x90000åœ°å€å¤„å…±512å­—èŠ‚
+# setupåœ¨0x90200åœ°å€å¤„å…±2KB
+# systemæ¨¡å—åœ¨0x10000(64KB)åœ°å€å¤„å…±192KBå­—èŠ‚
+# ä»¥ä¸Šéƒ½åœ¨å®æ¨¡å¼çš„1MBè®¿é—®ç©ºé—´å†…
 #
 # after that (everyting loaded), we jump to
 # the setup-routine loaded directly after
 # the bootblock:
+#
 
 	ljmp $SETUPSEG, $0				# setup code
 
+# 
 # This routine loads the system at address 0x10000, making sure
 # no 64kB boundaries are crossed. We try to load it as fast as
 # possible, loading whole tracks whenever we can.
@@ -309,11 +324,11 @@ bad_rt:	mov	$0, %ax
 	pop	%ax
 	jmp	read_track
 
-#/*
-# * This procedure turns off the floppy drive motor, so
-# * that we enter the kernel in a known state, and
-# * don't have to worry about it later.
-# */
+#
+# This procedure turns off the floppy drive motor, so
+# that we enter the kernel in a known state, and
+# don't have to worry about it later.
+# 
 kill_motor:
 	push %dx
 	mov	$0x3f2, %dx
