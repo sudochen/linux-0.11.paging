@@ -22,6 +22,9 @@
 #include <asm/io.h>
 #include <asm/segment.h>
 
+/*
+ * MAJOR_NR 是硬盘的主设备号
+ */
 #define MAJOR_NR 3
 #include "blk.h"
 
@@ -31,23 +34,37 @@ inb_p(0x71); \
 })
 
 /* Max read/write errors/sector */
+/*
+ * MAX_ERRORS 表示最大出错数
+ * MAX_HD 最大支持硬盘数量
+ */
 #define MAX_ERRORS	7
 #define MAX_HD		2
 
 static void recal_intr(void);
 
+/*
+ * recalibrate 重新校正标志，将磁头移动到0
+ * reset 复位标志，将复位硬盘控制器
+ */
 static int recalibrate = 0;
 static int reset = 0;
 
 /*
- *  This struct defines the HD's and their types.
+ * This struct defines the HD's and their types.
+ * head 磁头数
+ * sect 每个磁道含有的扇区数
+ * cyl 柱面数
+ * wpcom 写前预补偿柱面号
+ * lzone 磁头着陆区柱面号
+ * ctl 控制器字节
  */
 struct hd_i_struct {
 	int head,sect,cyl,wpcom,lzone,ctl;
 	};
 #ifdef HD_TYPE
 struct hd_i_struct hd_info[] = { HD_TYPE };
-#define NR_HD ((sizeof (hd_info))/(sizeof (struct hd_i_struct)))
+static int NR_HD = ((sizeof (hd_info))/(sizeof (struct hd_i_struct)));
 #else
 struct hd_i_struct hd_info[] = { {0,0,0,0,0,0},{0,0,0,0,0,0} };
 static int NR_HD = 0;
@@ -79,14 +96,21 @@ int sys_setup(void * BIOS)
 	if (!callable)
 		return -1;
 	callable = 0;
+	/*
+	 * 如果没有在config.h定义硬盘参数，则从0x90080处读入
+	 * setup模块通过BIOS调用获取了硬盘参数
+	 * 
+	 */
 #ifndef HD_TYPE
-	for (drive=0 ; drive<2 ; drive++) {
+	printk("HD_TYPE undefined, Query by BIOS\n");
+	for (drive=0; drive < 2; drive++) {
 		hd_info[drive].cyl = *(unsigned short *) BIOS;
 		hd_info[drive].head = *(unsigned char *) (2+BIOS);
 		hd_info[drive].wpcom = *(unsigned short *) (5+BIOS);
 		hd_info[drive].ctl = *(unsigned char *) (8+BIOS);
 		hd_info[drive].lzone = *(unsigned short *) (12+BIOS);
 		hd_info[drive].sect = *(unsigned char *) (14+BIOS);
+		printk("Query %d HardDisk\n", drive);
 		BIOS += 16;
 	}
 	if (hd_info[1].cyl)
@@ -94,34 +118,40 @@ int sys_setup(void * BIOS)
 	else
 		NR_HD=1;
 #endif
-	for (i=0 ; i<NR_HD ; i++) {
+	/*
+	 * 为什么是i*5,是不是和一个硬盘有4个分区有关，继续分析
+	 */
+	for (i = 0; i < NR_HD; i++) {
 		hd[i*5].start_sect = 0;
 		hd[i*5].nr_sects = hd_info[i].head*
 				hd_info[i].sect*hd_info[i].cyl;
 	}
 
 	/*
-		We querry CMOS about hard disks : it could be that 
-		we have a SCSI/ESDI/etc controller that is BIOS
-		compatable with ST-506, and thus showing up in our
-		BIOS table, but not register compatable, and therefore
-		not present in CMOS.
 
-		Furthurmore, we will assume that our ST-506 drives
-		<if any> are the primary drives in the system, and 
-		the ones reflected as drive 1 or 2.
+	We querry CMOS about hard disks : it could be that 
+	we have a SCSI/ESDI/etc controller that is BIOS
+	compatable with ST-506, and thus showing up in our
+	BIOS table, but not register compatable, and therefore
+	not present in CMOS.
 
-		The first drive is stored in the high nibble of CMOS
-		byte 0x12, the second in the low nibble.  This will be
-		either a 4 bit drive type or 0xf indicating use byte 0x19 
-		for an 8 bit type, drive 1, 0x1a for drive 2 in CMOS.
+	Furthurmore, we will assume that our ST-506 drives
+	<if any> are the primary drives in the system, and 
+	the ones reflected as drive 1 or 2.
 
-		Needless to say, a non-zero value means we have 
-		an AT controller hard disk for that drive.
+	The first drive is stored in the high nibble of CMOS
+	byte 0x12, the second in the low nibble.  This will be
+	either a 4 bit drive type or 0xf indicating use byte 0x19 
+	for an 8 bit type, drive 1, 0x1a for drive 2 in CMOS.
 
-		
+	Needless to say, a non-zero value means we have 
+	an AT controller hard disk for that drive.
+
 	*/
-
+	/*
+	 * 根据上面的原理检测控制器是否兼容
+	 * 
+	 */
 	if ((cmos_disks = CMOS_READ(0x12)) & 0xf0)
 		if (cmos_disks & 0x0f)
 			NR_HD = 2;
@@ -129,22 +159,43 @@ int sys_setup(void * BIOS)
 			NR_HD = 1;
 	else
 		NR_HD = 0;
+	/*
+	 * 如果NR_HD=0 表示两个硬盘都不是AT控制器兼容的，硬盘数据清零
+	 * 如果HR_HD=1 将第二个硬盘参数清零
+	 */
 	for (i = NR_HD ; i < 2 ; i++) {
 		hd[i*5].start_sect = 0;
 		hd[i*5].nr_sects = 0;
 	}
-	for (drive=0 ; drive<NR_HD ; drive++) {
+	/*
+	 * 开始读取两个硬盘的信息
+	 */
+	for (drive=0 ; drive < NR_HD; drive++) {
+		/*
+		 * bread的第一个参数是设备号
+		 * 如果drive是0，则300，表示第一个硬盘，301表示第一个硬盘的第一个分区也就是本实验的根文件系统
+		 * 如果drive是1，则305
+		 */
 		if (!(bh = bread(0x300 + drive*5,0))) {
 			printk("Unable to read partition table of drive %d\n\r",
 				drive);
 			panic("");
 		}
+		/*
+		 * 判断活动标志
+		 */
 		if (bh->b_data[510] != 0x55 || (unsigned char)
 		    bh->b_data[511] != 0xAA) {
 			printk("Bad partition table on drive %d\n\r",drive);
 			panic("");
 		}
+		/*
+		 * 分区表位于硬盘的前512字节的0x1BE（446）处
+		 */
 		p = 0x1BE + (void *)bh->b_data;
+		/*
+		 * 读取4个分区的信息
+		 */
 		for (i=1;i<5;i++,p++) {
 			hd[i+5*drive].start_sect = p->start_sect;
 			hd[i+5*drive].nr_sects = p->nr_sects;

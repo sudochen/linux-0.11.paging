@@ -170,7 +170,7 @@ switch_to_by_stack:
 	cmpl %ebx,current               # 判断要切换的任务和当前任务是不是一样
 	je 1f                           # 如果一样跳转到1处
 	# switch_to PCB
-	cli
+	# cli
 	movl %ebx,%eax                  # pnext赋值给ebx
 	xchgl %eax,current              # 交换current和eax，current目前是pnext了
 	# rewrite TSS pointer
@@ -189,7 +189,7 @@ switch_to_by_stack:
 	# get pnext->page dir base
 	movl 16(%ebp), %ecx             # 获取CR3
 	movl %ecx,%cr3                  # 设置CR3
-	sti
+	# sti
 	# nonsense
 	cmpl %eax,last_task_used_math 
 	jne 1f

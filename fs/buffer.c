@@ -353,12 +353,19 @@ void buffer_init(long buffer_end)
 	struct buffer_head * h = start_buffer;
 	void * b;
 	int i;
-
+	/*
+	 * 如果缓冲区高端为1M，则从640KB到1MB被显示内核和BIOS占用，实际上应该是640KB
+	 * 
+	 */
 	if (buffer_end == 1<<20)
 		b = (void *) (640*1024);
 	else
 		b = (void *) buffer_end;
-	while ( (b -= BLOCK_SIZE) >= ((void *) (h+1)) ) {
+	/*
+	 * h为start_buffer在实际跟踪过程中为end，end由链接程序生成，内核代码最末端
+	 * while里面保证h和b不重合
+	 */
+	while ((b -= BLOCK_SIZE) >= ((void *) (h+1))) {
 		h->b_dev = 0;
 		h->b_dirt = 0;
 		h->b_count = 0;
@@ -372,13 +379,20 @@ void buffer_init(long buffer_end)
 		h->b_next_free = h+1;
 		h++;
 		NR_BUFFERS++;
-		if (b == (void *) 0x100000)
-			b = (void *) 0xA0000;
+		if (b == (void *) 0x100000)		//如果地址递减到1MB，则跳过显存和BIOS
+			b = (void *) 0xA0000;		//b设置为640KB
 	}
+	/* h--指向最后的buffer_head
+	 * 如下的语句就是将buffer_head组成一个双向循环链表
+	 * 头部为start_buffer
+	 */
 	h--;
 	free_list = start_buffer;
 	free_list->b_prev_free = h;
 	h->b_next_free = free_list;
-	for (i=0;i<NR_HASH;i++)
+	/*
+	 * 初始化哈希表
+	 */
+	for (i=0; i < NR_HASH; i++)
 		hash_table[i]=NULL;
 }	

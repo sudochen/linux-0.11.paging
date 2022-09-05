@@ -18,7 +18,7 @@ export V Q S
 #
 
 RAMDISK_START ?= 256
-#RAMDISK_SIZE ?= 1024
+RAMDISK_SIZE ?= 2048
 
 %.o: %.c
 	$(Q)$(CC) $(CFLAGS) -c -o $*.o $<

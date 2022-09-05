@@ -45,6 +45,9 @@ void show_stat(void)
 
 #define LATCH (1193180/HZ)
 
+/*
+ * 没有找到调用的地方
+ */
 extern void mem_use(void);
 
 extern int timer_interrupt(void);
@@ -55,6 +58,9 @@ union task_union {
 	char stack[PAGE_SIZE];
 };
 
+/*
+ * 第一个进程数据结构
+ */
 static union task_union init_task = {INIT_TASK,};
 struct tss_struct *tss = &(init_task.task.tss);
 long volatile jiffies=0;
@@ -109,45 +115,65 @@ void schedule(void)
 	struct task_struct ** p;
 	int flag;
 
-/* check alarm, wake up any interruptible tasks that have got a signal */
-
-
-	local_irq_disable(flag);
-	
+	/* check alarm, wake up any interruptible tasks that have got a signal */
+	/* 从数组的组后开始遍历
+	 * 如果任务设置了alarm并且已经超市，设置SIGALRM信号，清除alarm
+	 *
+	 */
 	for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
 		if (*p) {
 			if ((*p)->alarm && (*p)->alarm < jiffies) {
 					(*p)->signal |= (1<<(SIGALRM-1));
 					(*p)->alarm = 0;
-				}
+			}
+			/*
+			 * 如果有信号，并且进程处于可中断的睡眠状态
+			 * 将进程设置为运行状态
+			 * 这个就是可被信号唤醒的深眠进程
+			 * 
+			 */
 			if (((*p)->signal & (_BLOCKABLE & ~(*p)->blocked)) &&
 			(*p)->state==TASK_INTERRUPTIBLE)
 				(*p)->state=TASK_RUNNING;
 		}
 
-	/* this is the scheduler proper: */
-
+	/* 
+	 * this is the scheduler proper: 
+	 * 调度器
+	 */
 	while (1) {
 		c = -1;
+		
+		/*
+		 * next和pnext都是目前的第一个进程
+		 */
 		next = 0;
 		pnext = task[next];
 		
 		i = NR_TASKS;
 		p = &task[NR_TASKS];
+		/*
+		 * 找一个处于运行状态，并且counter最大的进程
+		 */
 		while (--i) {
 			if (!*--p)
 				continue;
 			if ((*p)->state == TASK_RUNNING && (*p)->counter > c)
 				c = (*p)->counter, pnext = *p, next = i; 
 		}
-		if (c) break;
+		/*
+		 * 如果找到，退出循环进行任务切换
+		 */
+		if (c) 
+			break;
+		/*
+		 * 更新优先值，进入while(1)重新获取一个进程
+		 */
 		for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
 			if (*p)
 				(*p)->counter = ((*p)->counter >> 1) +
 						(*p)->priority;
 	}
-
-	local_irq_restore(flag);
 
 #ifdef CONFIG_SWITCH_TSS
 	switch_to(next);
@@ -156,6 +182,10 @@ void schedule(void)
 #endif
 }
 
+/*
+ * 将当前进程设置为可中断的睡眠状态
+ * 然后执行schedule进行进程切换
+ */
 int sys_pause(void)
 {
 	current->state = TASK_INTERRUPTIBLE;
@@ -163,6 +193,10 @@ int sys_pause(void)
 	return 0;
 }
 
+/*
+ * 将当前进程设置为不可中断的睡眠状态
+ * 只有明确进程唤醒才可以
+ */
 void sleep_on(struct task_struct **p)
 {
 	struct task_struct *tmp;
@@ -175,7 +209,6 @@ void sleep_on(struct task_struct **p)
 	*p = current;
 	current->state = TASK_UNINTERRUPTIBLE;
 	schedule();
-	*p = tmp;
 	if (tmp)
 		tmp->state=TASK_RUNNING;
 }
@@ -190,13 +223,26 @@ void interruptible_sleep_on(struct task_struct **p)
 		panic("task[0] trying to sleep");
 	tmp=*p;
 	*p=current;
-repeat:	current->state = TASK_INTERRUPTIBLE;
+repeat:	
+	current->state = TASK_INTERRUPTIBLE;
 	schedule();
 	if (*p && *p != current) {
 		(*p)->state = TASK_RUNNING;
 		goto repeat;
 	}
-	*p = tmp;
+	/* Linux完全注释有如下
+	 * 原来的代码中*p = NULL
+	 * 也会导致等待的进程可能没法唤醒，在嵌套的情况下
+	 * 因此修改为*p = tmp
+	 * 
+	 * 我个人认为将*p = tmp不合适，因为在后面的代码中tmp已经被唤醒
+	 * 当tmp被唤醒会进行递归回溯唤醒所有的进程
+	 * 设置为*p = NULL也不合适，因为当使用wake_up后设置*p为NULL
+	 * 如果这个时候别的进程刚好掉用sleep_on函数, *p是有内容的
+	 * 这样也会导致丢失，
+	 * 最好就是不管它就像sleep_on函数那样处理
+	 */
+	//*p = tmp;
 	if (tmp)
 		tmp->state = TASK_RUNNING;
 }
@@ -205,6 +251,15 @@ void wake_up(struct task_struct **p)
 {
 	if (p && *p) {
 		(*p)->state = TASK_RUNNING;
+		/*
+		 * 原来的代码有*p = NULL，linux内核完全注释说是要删除掉
+		 * 
+		 * 我个人认为不要删掉
+		 * 因为*p存放的是等待的第一个进程，第二个等待进程是存放在第一个堆栈中的
+		 * 当第二个进程唤醒时，就会通过堆栈获取原来*p，并将其唤醒
+		 * 以此类推唤醒所有进程
+		 * 如果注释掉，可能导致多次唤醒，没有意义
+		 */
 		*p = NULL;
 	}
 }
@@ -214,6 +269,9 @@ void wake_up(struct task_struct **p)
  * OK, here are some floppy things that shouldn't be in the kernel
  * proper. They are here because the floppy needs a timer, and this
  * was the easiest way of doing it.
+ * 
+ * wait_motor之所以是4，是因为可以能4个软驱
+ * 
  */
 static struct task_struct * wait_motor[4] = {NULL,NULL,NULL,NULL};
 static int  mon_timer[4]={0,0,0,0};

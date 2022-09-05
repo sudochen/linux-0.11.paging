@@ -1,11 +1,19 @@
 #ifndef _SCHED_H
 #define _SCHED_H
 
-#define NR_TASKS 64
-#define HZ 100
+/*
+ * NR_TASKS 当前内核只支持64个进程
+ * HZ 定义系统时钟的滴答数，一秒内100个滴答，每个滴答10ms
+ */
+#define NR_TASKS 	64
+#define HZ 			100
 
-#define FIRST_TASK task[0]
-#define LAST_TASK task[NR_TASKS-1]
+/* 
+ * FIRST_TASK 任务0，第一个进程，通过move_to_user手工创建
+ * LAST_TASK 最后一个任务
+ */
+#define FIRST_TASK 	task[0]
+#define LAST_TASK 	task[NR_TASKS-1]
 
 #include <linux/head.h>
 #include <linux/fs.h>
@@ -16,11 +24,16 @@
 #error "Currently the close-on-exec-flags are in one word, max 32 files/proc"
 #endif
 
-#define TASK_RUNNING		0
-#define TASK_INTERRUPTIBLE	1
+/*
+ * 定义进程状态
+ * TASK_RUNNING 进程处于运行状态，可以被调度
+ * TASK_ZOMBIE 僵尸进程，已经掉用了exit，但是没有被父进程wait_pid
+ */
+#define TASK_RUNNING			0
+#define TASK_INTERRUPTIBLE		1
 #define TASK_UNINTERRUPTIBLE	2
-#define TASK_ZOMBIE		3
-#define TASK_STOPPED		4
+#define TASK_ZOMBIE				3
+#define TASK_STOPPED			4
 
 #ifndef NULL
 #define NULL ((void *) 0)
@@ -156,7 +169,6 @@ extern void wake_up(struct task_struct ** p);
  * Entry into gdt where to find first TSS. 0-nul, 1-cs, 2-ds, 3-syscall
  * 4-TSS0, 5-LDT0, 6-TSS1 etc ...
  */
-
 #define FIRST_TSS_ENTRY 4
 #define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY+1)
 /* _TSS(n) 表示任务n的TSS段描述子，其地址指向一个在GDT中的TSS段，每个任务都有自己TSS段
@@ -172,16 +184,45 @@ extern void wake_up(struct task_struct ** p);
 /*
  * 加载LDT和TSS
  */
-#define ltr(n) __asm__("ltr %%ax"::"a" (_TSS(n)))
-#define lldt(n) __asm__("lldt %%ax"::"a" (_LDT(n)))
+#define ltr(n) 	__asm__("ltr %%ax"::"a" (_TSS(n)))
+#define lldt(n)	__asm__("lldt %%ax"::"a" (_LDT(n)))
+
+/*
+ * gcc的内联汇编函数格式
+ * asm("assemble": output : input : 受影响的寄存器)
+ * m 表示内存操作数
+ * i 表示立即操作数
+ * a 使用寄存器eax
+ * b 使用寄存器ebx
+ * c 使用寄存器ecx
+ * d 使用寄存器edx
+ * S 使用esi
+ * D 使用edi
+ * q 动态分配字节可寻址的寄存器
+ * r 使用任意动态分配的寄存器
+ * A 使用eax和edx联合的64位寄存器
+ * o 内存操作数，但前提是此地址是可偏移的，向地址添加一个小偏移会给出一个有效地址
+ * 
+ * 当前进程的任务号，存放在n中
+ * 这个代码在使用内核堆栈进行任务切换时有问题
+ * 
+ * str是将当前TSS所在的有效地址（有就是偏移地址）放到ax寄存器中，
+ * 然后将eax-FIRST_TSS_ENTRY<<3也就是eax-32
+ * 为什么是32呢，因为进程占用是从第4个描述符开始的，每个描述符占用8个字节，一共32个字节
+ * 最后再将eax向右移动4位，也就是除以16，
+ * 为什么除16，是因为每个进程占用两个描述符，分别是TSS和LDT，一共16个字节
+ * 看到这应该明白为什么不能在内核栈进程切换的任务中使用了吧
+ * 
+ */
 #define str(n) \
 __asm__("str %%ax\n\t" \
 	"subl %2,%%eax\n\t" \
 	"shrl $4,%%eax" \
 	:"=a" (n) \
 	:"a" (0),"i" (FIRST_TSS_ENTRY<<3))
+
 /*
- *	switch_to(n) should switch tasks to task nr n, first
+ * switch_to(n) should switch tasks to task nr n, first
  * checking that n isn't the current task, in which case it does nothing.
  * This also clears the TS-flag if the task we switched to has used
  * tha math co-processor latest.
@@ -202,9 +243,16 @@ __asm__("cmpl %%ecx,current\n\t" \
 	"d" (_TSS(n)),"c" ((long) task[n])); \
 }
 
-
+/*
+ * PAGE_ALIGN搜索全部代码，没有用到 
+ */
+#if 0
 #define PAGE_ALIGN(n) (((n)+0xfff)&0xfffff000)
+#endif
 
+/*
+ * 设置位于地址addr处描述符的基地址
+ */
 #define _set_base(addr,base)  \
 __asm__ ("push %%edx\n\t" \
 	"movw %%dx,%0\n\t" \
@@ -218,6 +266,9 @@ __asm__ ("push %%edx\n\t" \
 	 "d" (base) \
 	)
 
+/*
+ * 设置位于地址addr处描述符的长度
+ */
 #define _set_limit(addr,limit) \
 __asm__ ("push %%edx\n\t" \
 	"movw %%dx,%0\n\t" \
@@ -232,10 +283,10 @@ __asm__ ("push %%edx\n\t" \
 	 "d" (limit) \
 	)
 
-#define set_base(ldt,base) _set_base( ((char *)&(ldt)) , (base) )
-#define set_limit(ldt,limit) _set_limit( ((char *)&(ldt)) , (limit-1)>>12 )
+#define set_base(ldt,base)		_set_base( ((char *)&(ldt)) , (base) )
+#define set_limit(ldt,limit)	_set_limit( ((char *)&(ldt)) , (limit-1)>>12 )
 
-/**
+#if 0
 #define _get_base(addr) ({\
 unsigned long __base; \
 __asm__("movb %3,%%dh\n\t" \
@@ -248,27 +299,40 @@ __asm__("movb %3,%%dh\n\t" \
 	 "m" (*((addr)+7)) \
         :"memory"); \
 __base;})
-**/
+#endif
 
 static inline unsigned long _get_base(char * addr)
 {
-         unsigned long __base;
-         __asm__("movb %3,%%dh\n\t"
-                 "movb %2,%%dl\n\t"
-                 "shll $16,%%edx\n\t"
-                 "movw %1,%%dx"
-                 :"=&d" (__base)
-                 :"m" (*((addr)+2)),
-                  "m" (*((addr)+4)),
-                  "m" (*((addr)+7)));
-         return __base;
+	unsigned long __base;
+	__asm__("movb %3,%%dh\n\t"
+			"movb %2,%%dl\n\t"
+			"shll $16,%%edx\n\t"
+			"movw %1,%%dx"
+			:"=&d" (__base)
+			:"m" (*((addr)+2)),
+			"m" (*((addr)+4)),
+			"m" (*((addr)+7)));
+		return __base;
 }
 
-#define get_base(ldt) _get_base( ((char *)&(ldt)) )
-
-#define get_limit(segment) ({ \
+#if 0
+#define _get_limit(segment) ({ \
 unsigned long __limit; \
 __asm__("lsll %1,%0\n\tincl %0":"=r" (__limit):"r" (segment)); \
 __limit;})
+#endif
+
+static inline unsigned long _get_limit(unsigned long segment)
+{
+	unsigned long __limit;
+	__asm__("lsll %1,%0\n\t"
+			"incl %0"
+			:"=&r" (__limit)
+			:"r" (segment));	
+	return __limit;
+}
+
+#define get_base(ldt)		_get_base( ((char *)&(ldt)) )
+#define get_limit(segment) 	_get_limit(segment)
 
 #endif
