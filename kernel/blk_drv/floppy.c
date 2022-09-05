@@ -28,6 +28,8 @@
  *
  * Also, I'm not certain this works on more than 1 floppy. Bugs may
  * abund.
+ * 
+ * 不能保证该程序能在多于一个以上的软驱系统上工作
  */
 
 #include <linux/sched.h>
@@ -38,6 +40,9 @@
 #include <asm/io.h>
 #include <asm/segment.h>
 
+/*
+ * 软驱的主设备号是2
+ */
 #define MAJOR_NR 2
 #include "blk.h"
 
@@ -50,6 +55,11 @@ extern unsigned char current_DOR;
 #define immoutb_p(val,port) \
 __asm__("outb %0,%1\n\tjmp 1f\n1:\tjmp 1f\n1:"::"a" ((char) (val)),"i" (port))
 
+/*
+ * 定义用于计算软驱的类型和设备号
+ * TYPE(x) 2对应1.2MB，7对应1.44MB
+ * DRIVE(x) 0对应3，A对应D
+ */
 #define TYPE(x) ((x)>>2)
 #define DRIVE(x) ((x)&0x03)
 /*
@@ -78,6 +88,9 @@ static unsigned char reply_buffer[MAX_REPLIES];
  * The 'stretch' tells if the tracks need to be boubled for some
  * types (ie 360kB diskette in 1.2MB drive etc). Others should
  * be self-explanatory.
+ * 
+ * 软盘类型定义
+ * 
  */
 static struct floppy_struct {
 	unsigned int size, sect, head, track, stretch;
@@ -122,6 +135,9 @@ static unsigned char command = 0;
 unsigned char selected = 0;
 struct task_struct * wait_on_floppy_select = NULL;
 
+/*
+ * 取消选定软驱
+ */
 void floppy_deselect(unsigned int nr)
 {
 	if (nr != (current_DOR & 3))
@@ -162,31 +178,36 @@ static void setup_DMA(void)
 	long addr = (long) CURRENT->buffer;
 
 	cli();
+	/*
+	 * 设置DMA，由于8273A芯片的DMA只能在1MB范围内
+	 * 因此，如果地址大于1MB，使用tmp_floppy_area作为临时缓冲区
+	 * tmp_floppy_area在head中定义，大小为1KB
+	 */
 	if (addr >= 0x100000) {
 		addr = (long) tmp_floppy_area;
 		if (command == FD_WRITE)
 			copy_buffer(CURRENT->buffer,tmp_floppy_area);
 	}
-/* mask DMA 2 */
+	/* mask DMA 2 */
 	immoutb_p(4|2,10);
-/* output command byte. I don't know why, but everyone (minix, */
-/* sanches & canton) output this twice, first to 12 then to 11 */
+	/* output command byte. I don't know why, but everyone (minix, */
+	/* sanches & canton) output this twice, first to 12 then to 11 */
  	__asm__("outb %%al,$12\n\tjmp 1f\n1:\tjmp 1f\n1:\t"
 	"outb %%al,$11\n\tjmp 1f\n1:\tjmp 1f\n1:"::
 	"a" ((char) ((command == FD_READ)?DMA_READ:DMA_WRITE)));
-/* 8 low bits of addr */
+	/* 8 low bits of addr */
 	immoutb_p(addr,4);
 	addr >>= 8;
-/* bits 8-15 of addr */
+	/* bits 8-15 of addr */
 	immoutb_p(addr,4);
 	addr >>= 8;
-/* bits 16-19 of addr */
+	/* bits 16-19 of addr */
 	immoutb_p(addr,0x81);
-/* low 8 bits of count-1 (1024-1=0x3ff) */
+	/* low 8 bits of count-1 (1024-1=0x3ff) */
 	immoutb_p(0xff,5);
-/* high 8 bits of count-1 */
+	/* high 8 bits of count-1 */
 	immoutb_p(3,5);
-/* activate DMA 2 */
+	/* activate DMA 2 */
 	immoutb_p(0|2,10);
 	sti();
 }

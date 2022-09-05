@@ -146,16 +146,19 @@ __asm__ ("movw %%dx,%%ax\n\t" \
 /*
  * 设置陷阱门，
  * type = 14 = 1111 表示陷阱门
- * DPL=3表示用户模式下可以访问，我们使用这个来设置系统调用
+ * DPL=3表示用户模式下可以访问
+ * 系统调用
  *
  */
 #define set_system_gate(n,addr) \
 	_set_gate(&idt[n],15,3,addr)
 	
 /*
- * 下面的代码，这个我搜索了全部的代码，没有找到引用的地方，暂时不分析
+ * 下面的代码，这个我搜索了全部的代码，没有找到引用的地方
+ * 暂时不分析
  *
  */
+#if 0
 #define _set_seg_desc(gate_addr,type,dpl,base,limit) {\
 	*(gate_addr) = ((base) & 0xff000000) | \
 		(((base) & 0x00ff0000)>>16) | \
@@ -165,6 +168,7 @@ __asm__ ("movw %%dx,%%ax\n\t" \
 		((type)<<8); \
 	*((gate_addr)+1) = (((base) & 0x0000ffff)<<16) | \
 		((limit) & 0x0ffff); }
+#endif
 
 /*
  * 补充一些基础知识 

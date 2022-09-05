@@ -903,9 +903,9 @@ void show_mem(void)
 			shared += mem_map[i]-1;
 		}
 	}
-	printk("Buffer blocks:   %6d\n", nr_buffers);
-	printk("Tatal pages:     %6d\n", total);
-	printk("Free pages:      %6d\n", free);
-	printk("Reserved pages:  %6d\n", reserved);
-	printk("Shared pages:    %6d\n", shared);
+	printk("Buffer blocks: %d blocks(1KB) %dMB\n", nr_buffers, (nr_buffers*BLOCK_SIZE)/(1024*1024));
+	printk("Tatal pages: %d pages(4KB) %dMB\n", total, (total*4096)/(1024*1024));
+	printk("Free pages: %d pages(4KB) %dMB\n", free, (free*4096)/(1024*1024));
+	printk("Reserved pages: %d pages(4KB) %dMB\n", reserved, (reserved*4096)/(1024*1024));
+	printk("Shared pages: %d pages(4KB) %dMB\n", shared, (shared*4096)/(1024*1024));
 }

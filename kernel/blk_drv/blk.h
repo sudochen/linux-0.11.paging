@@ -1,6 +1,9 @@
 #ifndef _BLK_H
 #define _BLK_H
 
+/*
+ * 块设备的数量
+ */
 #define NR_BLK_DEV	7
 /*
  * NR_REQUEST is the number of entries in the request-queue.

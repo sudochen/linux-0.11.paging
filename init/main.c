@@ -157,14 +157,22 @@ void start_kernel(int __a, int __b, int __c)
 	 */
 	if (memory_end > 16*1024*1024)
 		memory_end = 16*1024*1024;
+	/*
+	 * 设置缓存的最末端地址
+	 * 如果系统内存大于12MB，则缓存最末端为4MB
+	 * 
+	 */
 	if (memory_end > 12*1024*1024) 
-		buffer_memory_end = 6*1024*1024;
+		buffer_memory_end = 4*1024*1024;
 	else if (memory_end > 6*1024*1024)
 		buffer_memory_end = 2*1024*1024;
 	else
 		buffer_memory_end = 1*1024*1024;
 	main_memory_start = buffer_memory_end;
 #ifdef RAMDISK_SIZE
+	/*
+	 * RAMDISK_SIZE的单位是block，一个block是1024个字节
+	 */
 	main_memory_start += rd_init(main_memory_start, RAMDISK_SIZE*1024);
 #endif
 	/*
@@ -181,7 +189,7 @@ void start_kernel(int __a, int __b, int __c)
 	printk("men_end is %dMB\n", memory_end/(1024*1024));
 	printk("system has %d pages omg\n", get_total_pages());
 #ifdef RAMDISK_SIZE
-	printk("ramdisk size is %dMB", RAMDISK_SIZE/1024);
+	printk("ramdisk size is %dMB\n", RAMDISK_SIZE/1024);
 #endif
 	time_init();
 	sched_init();
@@ -297,7 +305,7 @@ void init(void)
 	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,
 		NR_BUFFERS*BLOCK_SIZE);
 	printf("Free mem: %d bytes\n\r",memory_end-main_memory_start);
-
+	printf("init current pid is %d\n", getpid());
 	if (!(pid=fork())) {
 		printf("init fork current pid is %d\n", getpid());
 		close(0);
