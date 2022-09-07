@@ -135,31 +135,52 @@ int sys_chown(const char * filename,int uid,int gid)
 	return 0;
 }
 
-int sys_open(const char * filename,int flag,int mode)
+int sys_open(const char * filename, int flag, int mode)
 {
 	struct m_inode * inode;
 	struct file * f;
 	int i,fd;
 
+	/*
+	 * 文件模式
+	 */
 	mode &= 0777 & ~current->umask;
-	for(fd=0 ; fd<NR_OPEN ; fd++)
+	/*
+	 * 遍历current的filp[20], 找到一个空闲项
+	 * 一个进程最多打开20个文件
+	 */
+	for(fd = 0; fd < NR_OPEN; fd++)
 		if (!current->filp[fd])
 			break;
-	if (fd>=NR_OPEN)
+	if (fd >= NR_OPEN)
 		return -EINVAL;
+	/*
+	 * 设置close_on_exec标记
+	 */
 	current->close_on_exec &= ~(1<<fd);
-	f=0+file_table;
-	for (i=0 ; i<NR_FILE ; i++,f++)
-		if (!f->f_count) break;
-	if (i>=NR_FILE)
+	/*
+	 * 在file_table找一个空闲项
+	 */
+	f = 0 + file_table;
+	for (i=0; i < NR_FILE; i++, f++)
+		if (!f->f_count) 
+			break;
+	if (i >= NR_FILE)
 		return -EINVAL;
+
+	/*
+	 * 当前进程的filp和fd对应的file_table，并且增加计数
+	 */
 	(current->filp[fd]=f)->f_count++;
-	if ((i=open_namei(filename,flag,mode,&inode))<0) {
-		current->filp[fd]=NULL;
-		f->f_count=0;
+	/*
+	 * 掉用函数执行打开操作
+	 */
+	if ((i = open_namei(filename, flag, mode, &inode)) <0 ) {
+		current->filp[fd] = NULL;
+		f->f_count = 0;
 		return i;
 	}
-/* ttys are somewhat special (ttyxx major==4, tty major==5) */
+	/* ttys are somewhat special (ttyxx major==4, tty major==5) */
 	if (S_ISCHR(inode->i_mode)) {
 		if (MAJOR(inode->i_zone[0])==4) {
 			if (current->leader && current->tty<0) {
@@ -174,7 +195,7 @@ int sys_open(const char * filename,int flag,int mode)
 				return -EPERM;
 			}
 	}
-/* Likewise with block-devices: check for floppy_change */
+	/* Likewise with block-devices: check for floppy_change */
 	if (S_ISBLK(inode->i_mode))
 		check_disk_change(inode->i_zone[0]);
 	f->f_mode = inode->i_mode;

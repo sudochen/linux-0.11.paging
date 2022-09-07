@@ -114,10 +114,14 @@ __asm__ ("movl %%esp,%%eax\n\t" \
  *
  */
 #define _set_gate(gate_addr,type,dpl,addr) \
-__asm__ ("movw %%dx,%%ax\n\t" \
+__asm__ ("pushl %%eax\n\t" \
+	"pushl %%edx\n\t" \
+	"movw %%dx,%%ax\n\t" \
 	"movw %0,%%dx\n\t" \
 	"movl %%eax,%1\n\t" \
-	"movl %%edx,%2" \
+	"movl %%edx,%2\n\t" \
+	"popl %%edx\n\t" \
+	"popl %%eax\n\t" \
 	: \
 	: "i" ((short) (0x8000+(dpl<<13)+(type<<8))), \
 	"o" (*((char *) (gate_addr))), \
@@ -244,14 +248,16 @@ __asm__ ("movw %%dx,%%ax\n\t" \
  *	movb %%ah,%6, 将addr的bit[24:31]存放到描述付的bit[56:63]中
  */
 #define _set_tssldt_desc(n,addr,type) \
-__asm__ ("movw $104,%1\n\t" \
+__asm__ ("pushl %%eax\n\t" \
+	"movw $104,%1\n\t" \
 	"movw %%ax,%2\n\t" \
 	"rorl $16,%%eax\n\t" \
 	"movb %%al,%3\n\t" \
 	"movb $" type ",%4\n\t" \
 	"movb $0x00,%5\n\t" \
 	"movb %%ah,%6\n\t" \
-	"rorl $16,%%eax" \
+	"rorl $16,%%eax\n\t" \
+	"popl %%eax\n\t" \
 	::"a" (addr+0xc0000000), "m" (*(n)), "m" (*(n+2)), "m" (*(n+4)), \
 	 "m" (*(n+5)), "m" (*(n+6)), "m" (*(n+7)) \
 	)
@@ -259,6 +265,6 @@ __asm__ ("movw $104,%1\n\t" \
 /*
  * 在全局描述符n地址处，设置一个TSS段描述符或者LDT描述符，TSS或LDT的地址为addr
  */
-#define set_tss_desc(n,addr) _set_tssldt_desc(((char *) (n)),((int)(addr)),"0x89")
-#define set_ldt_desc(n,addr) _set_tssldt_desc(((char *) (n)),((int)(addr)),"0x82")
+#define set_tss_desc(n,addr) _set_tssldt_desc(((char *)(n)), ((int)(addr)), "0x89")
+#define set_ldt_desc(n,addr) _set_tssldt_desc(((char *)(n)), ((int)(addr)), "0x82")
 

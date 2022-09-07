@@ -19,7 +19,10 @@ int sync_dev(int dev);
 void wait_for_keypress(void);
 
 /* set_bit uses setb, as gas doesn't recognize setc */
-#define set_bit(bitnr,addr) ({ \
+/*
+ * 原名字为set_bit，但是test_bit更合适
+ */
+#define test_bit(bitnr,addr) ({ \
 register int __res ; \
 __asm__("bt %2,%3;setb %%al":"=a" (__res):"a" (0),"r" (bitnr),"m" (*(addr))); \
 __res; })
@@ -28,6 +31,9 @@ struct super_block super_block[NR_SUPER];
 /* this is initialized in init/main.c */
 int ROOT_DEV = 0;
 
+/*
+ * 获取超级块使用权限
+ */
 static void lock_super(struct super_block * sb)
 {
 	cli();
@@ -37,6 +43,9 @@ static void lock_super(struct super_block * sb)
 	sti();
 }
 
+/*
+ * 释放超级块使用权限
+ */
 static void free_super(struct super_block * sb)
 {
 	cli();
@@ -45,6 +54,9 @@ static void free_super(struct super_block * sb)
 	sti();
 }
 
+/*
+ * 等待超级块使用权限
+ */
 static void wait_on_super(struct super_block * sb)
 {
 	cli();
@@ -53,6 +65,9 @@ static void wait_on_super(struct super_block * sb)
 	sti();
 }
 
+/*
+ * 获取指定设备的超级块，没有则返回空指针
+ */
 struct super_block * get_super(int dev)
 {
 	struct super_block * s;
@@ -71,6 +86,9 @@ struct super_block * get_super(int dev)
 	return NULL;
 }
 
+/*
+ * 释放指定的超级块
+ */
 void put_super(int dev)
 {
 	struct super_block * sb;
@@ -245,37 +263,91 @@ void mount_root(void)
 	struct super_block * p;
 	struct m_inode * mi;
 
-	if (32 != sizeof (struct d_inode))
+	/*
+	 * 磁盘上的i节点必须为32个字节
+	 */
+	if (32 != sizeof(struct d_inode))
 		panic("bad i-node size");
-	for(i=0;i<NR_FILE;i++)
+	
+	/*
+	 * 初始化文件表数组
+	 */
+	for(i=0; i<NR_FILE; i++)
 		file_table[i].f_count=0;
+
+	/*
+	 * 如果是软盘，提示用户插入文件系统软盘并输入Enter
+	 */
 	if (MAJOR(ROOT_DEV) == 2) {
 		printk("Insert root floppy and press ENTER");
 		wait_for_keypress();
 	}
-	for(p = &super_block[0] ; p < &super_block[NR_SUPER] ; p++) {
+
+	/*
+	 * 初始化超级块数组，一共8项
+	 */
+	for(p = &super_block[0]; p < &super_block[NR_SUPER]; p++) {
 		p->s_dev = 0;
 		p->s_lock = 0;
 		p->s_wait = NULL;
 	}
+
+	/*
+	 * 从根文件系统上读取超级块，如果失败则panic 
+	 */
 	if (!(p=read_super(ROOT_DEV)))
 		panic("Unable to mount root");
-	if (!(mi=iget(ROOT_DEV,ROOT_INO)))
+	
+	/*
+	 * 从设备上获取根i节点
+	 */
+	if (!(mi=iget(ROOT_DEV, ROOT_INO)))
 		panic("Unable to read root i-node");
+	/*
+	 * 从逻辑上讲，该i节点引用增加了3次
+	 * 下面分析
+	 */
 	mi->i_count += 3 ;	/* NOTE! it is logically used 4 times, not 1 */
+	/*
+	 * i节点安装到超级块中，引用+1
+	 */
 	p->s_isup = p->s_imount = mi;
+	/*
+	 * 引用+1
+	 */
 	current->pwd = mi;
+	/*
+	 * 引用+1
+	 */
 	current->root = mi;
 	free=0;
+	/*
+	 * 统计该设备上的空闲块数，先让i等于该设备总的逻辑块数
+	 * s_nzones表示总逻辑块数
+	 * s_zmap逻辑块位图缓冲块指针数组，8个块
+	 * s_ninodes表示节点数
+	 * s_imap节点位图缓冲块指针数组，8个块
+	 * 为什么是8191呢？
+	 * 因为一个高速缓冲区是1024个字节，共8192位
+	 * i&8191算的是在高速缓冲区的偏移，而i>>13是使用哪个高速缓存作为索引
+	 * 下面inodes是一样的道理
+	 * 每一个bit代表一个块，一共8192*8个bit，一个块1K
+	 * minix文件系统一共可管理8192*8*1K = 64M
+	 * minix文件系统最大64M
+	 * inode代表一个文件或者文件夹
+	 */
 	i=p->s_nzones;
-	while (-- i >= 0)
-		if (!set_bit(i&8191,p->s_zmap[i>>13]->b_data))
+	while (--i >= 0)
+		if (!test_bit(i&8191,p->s_zmap[i>>13]->b_data))
 			free++;
 	printk("%d/%d free blocks\n\r",free,p->s_nzones);
+	/*
+	 * 重置free，计算inode
+	 */
 	free=0;
 	i=p->s_ninodes+1;
-	while (-- i >= 0)
-		if (!set_bit(i&8191,p->s_imap[i>>13]->b_data))
+	while (--i >= 0)
+		if (!test_bit(i&8191,p->s_imap[i>>13]->b_data))
 			free++;
 	printk("%d/%d free inodes\n\r",free,p->s_ninodes);
 }

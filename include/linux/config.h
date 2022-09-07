@@ -32,17 +32,18 @@
  * commas:
  *
  * #define HD_TYPE { h,s,c,wpcom,lz,ctl },{ h,s,c,wpcom,lz,ctl }
+ *
+ *
+ * This is an example, two drives, first is type 2, second is type 3:
+ *
+ * #define HD_TYPE { 4,17,615,300,615,8 }, { 6,17,615,300,615,0 }
+ *
+ * NOTE: ctl is 0 for all drives with heads<=8, and ctl=8 for drives
+ * with more than 8 heads.
+ *
+ * If you want the BIOS to tell what kind of drive you have, just
+ * leave HD_TYPE undefined. This is the normal thing to do.
+ * 
  */
-/*
- This is an example, two drives, first is type 2, second is type 3:
-
-#define HD_TYPE { 4,17,615,300,615,8 }, { 6,17,615,300,615,0 }
-
- NOTE: ctl is 0 for all drives with heads<=8, and ctl=8 for drives
- with more than 8 heads.
-
- If you want the BIOS to tell what kind of drive you have, just
- leave HD_TYPE undefined. This is the normal thing to do.
-*/
 
 #endif
