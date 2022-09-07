@@ -26,9 +26,9 @@
  */
 /* #define NO_TRUNCATE */
 
-#define MAY_EXEC 1
-#define MAY_WRITE 2
-#define MAY_READ 4
+#define MAY_EXEC 	1
+#define MAY_WRITE 	2
+#define MAY_READ 	4
 
 /*
  *	permission()
@@ -37,16 +37,16 @@
  * I don't know if we should look at just the euid or both euid and
  * uid, but that should be easily changed.
  */
-static int permission(struct m_inode * inode,int mask)
+static int permission(struct m_inode *inode, int mask)
 {
 	int mode = inode->i_mode;
 
-/* special case: not even root can read/write a deleted file */
+	/* special case: not even root can read/write a deleted file */
 	if (inode->i_dev && !inode->i_nlinks)
 		return 0;
-	else if (current->euid==inode->i_uid)
+	else if (current->euid == inode->i_uid)
 		mode >>= 6;
-	else if (current->egid==inode->i_gid)
+	else if (current->egid == inode->i_gid)
 		mode >>= 3;
 	if (((mode & mask & 0007) == mask) || suser())
 		return 1;
@@ -87,6 +87,8 @@ static int match(int len,const char * name,struct dir_entry * de)
  *
  * This also takes care of the few special cases due to '..'-traversal
  * over a pseudo-root and a mount point.
+ * 在指定的目录中寻找一个name目录，
+ * 返回一个含有找到目录项的高速缓冲区以及目录项本身(res_dir)
  */
 static struct buffer_head * find_entry(struct m_inode ** dir,
 	const char * name, int namelen, struct dir_entry ** res_dir)
@@ -104,19 +106,39 @@ static struct buffer_head * find_entry(struct m_inode ** dir,
 	if (namelen > NAME_LEN)
 		namelen = NAME_LEN;
 #endif
+	/*
+	 * 计算该目录下的目录数量entries
+	 */
 	entries = (*dir)->i_size / (sizeof (struct dir_entry));
+	/*
+	 * 清除返回目录项结构指针
+	 */
 	*res_dir = NULL;
 	if (!namelen)
 		return NULL;
-/* check for '..', as we might have to do some "magic" for it */
-	if (namelen==2 && get_fs_byte(name)=='.' && get_fs_byte(name+1)=='.') {
-/* '..' in a pseudo-root results in a faked '.' (just change namelen) */
+	/* check for '..', as we might have to do some "magic" for it */
+	/*
+	 * 如果是..表示上一级目录，上一级目录是是
+	 */
+	if (namelen == 2 && get_fs_byte(name) == '.' && get_fs_byte(name+1) == '.') {
+		/* '..' in a pseudo-root results in a faked '.' (just change namelen) */
+		/*
+		 * 如果当前目录是根目录，则将将目录设置为'.'
+		 * 也就是设置长度即可
+		 */
 		if ((*dir) == current->root)
-			namelen=1;
+			namelen = 1;
+		/*
+		 * 如果当前目录是文件系统的根节点，则需要取超级块
+		 */
 		else if ((*dir)->i_num == ROOT_INO) {
-/* '..' over a mount-point results in 'dir' being exchanged for the mounted
-   directory-inode. NOTE! We set mounted, so that we can iput the new dir */
-			sb=get_super((*dir)->i_dev);
+		/* '..' over a mount-point results in 'dir' being exchanged for the mounted
+   		 directory-inode. NOTE! We set mounted, so that we can iput the new dir */
+			/*
+			 * 取超级块，并设置dir为挂载的目录
+			 * 目录引用计数加1
+			 */
+			sb = get_super((*dir)->i_dev);
 			if (sb->s_imount) {
 				iput(*dir);
 				(*dir)=sb->s_imount;
@@ -124,9 +146,12 @@ static struct buffer_head * find_entry(struct m_inode ** dir,
 			}
 		}
 	}
+	/*
+	 * 读取一个块的数据
+	 */
 	if (!(block = (*dir)->i_zone[0]))
 		return NULL;
-	if (!(bh = bread((*dir)->i_dev,block)))
+	if (!(bh = bread((*dir)->i_dev, block)))
 		return NULL;
 	i = 0;
 	de = (struct dir_entry *) bh->b_data;
@@ -224,6 +249,8 @@ static struct buffer_head * add_entry(struct m_inode * dir,
  *
  * Getdir traverses the pathname until it hits the topmost directory.
  * It returns NULL on failure.
+ * 根据给出的路径名进行搜索，直到达到最顶端的目录
+ * 如果失败返回NULL
  */
 static struct m_inode * get_dir(const char * pathname)
 {
@@ -234,29 +261,56 @@ static struct m_inode * get_dir(const char * pathname)
 	int namelen,inr,idev;
 	struct dir_entry * de;
 
+	/*
+	 * 如果当前进程没有设定根i节点或者计数为0，panic
+	 */
 	if (!current->root || !current->root->i_count)
 		panic("No root inode");
+	/*
+	 * 如果当前进程没有工作目录也panic
+	 */
 	if (!current->pwd || !current->pwd->i_count)
 		panic("No cwd inode");
-	if ((c=get_fs_byte(pathname))=='/') {
+
+	/*
+	 * 如果第一个字符为'/'说明是绝对地址，则从当前进程的根目录开始操作
+	 * 否则从当前进程的工作目录开始操作
+	 * 否则错误
+	 */
+	if ((c = get_fs_byte(pathname)) == '/') {
 		inode = current->root;
 		pathname++;
 	} else if (c)
 		inode = current->pwd;
 	else
 		return NULL;	/* empty name is bad */
+	/*
+	 * 增加引用计数
+	 */
 	inode->i_count++;
 	while (1) {
 		thisname = pathname;
+		/*
+		 * 如果该节点不是目录，并且没有权限直接返回NULL
+		 */
 		if (!S_ISDIR(inode->i_mode) || !permission(inode,MAY_EXEC)) {
 			iput(inode);
 			return NULL;
 		}
-		for(namelen=0;(c=get_fs_byte(pathname++))&&(c!='/');namelen++)
+		/*
+		 * 遍历pathname如果，直到c为0或者c为'/'
+		 */
+		for(namelen = 0; (c = get_fs_byte(pathname++)) && (c != '/'); namelen++)
 			/* nothing */ ;
+		/*
+		 * 如果c为0，表示已经到达指定目录
+		 */
 		if (!c)
 			return inode;
-		if (!(bh = find_entry(&inode,thisname,namelen,&de))) {
+		/*
+		 * 调用查找制定目录和文件名的函数
+		 */
+		if (!(bh = find_entry(&inode, thisname, namelen, &de))) {
 			iput(inode);
 			return NULL;
 		}
@@ -270,10 +324,12 @@ static struct m_inode * get_dir(const char * pathname)
 }
 
 /*
- *	dir_namei()
+ * dir_namei()
  *
  * dir_namei() returns the inode of the directory of the
  * specified name, and the name within that directory.
+ *
+ * 返回pathname指定目录名的i节点指针，以及在最顶层的目录名称
  */
 static struct m_inode * dir_namei(const char * pathname,
 	int * namelen, const char ** name)

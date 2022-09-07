@@ -23,73 +23,92 @@
 
 #define IS_SEEKABLE(x) ((x)>=1 && (x)<=3)
 
-#define READ 0
-#define WRITE 1
-#define READA 2		/* read-ahead - don't pause */
-#define WRITEA 3	/* "write-ahead" - silly, but somewhat useful */
+#define READ 	0
+#define WRITE 	1
+#define READA 	2		/* read-ahead - don't pause */
+#define WRITEA 	3	/* "write-ahead" - silly, but somewhat useful */
 
 void buffer_init(long buffer_end);
 
+/*
+ * 高字节，主设备号
+ * 低字节，次设备号
+ */
 #define MAJOR(a) (((unsigned)(a))>>8)
 #define MINOR(a) ((a)&0xff)
 
-#define NAME_LEN 14
-#define ROOT_INO 1
+/*
+ * NAME_LEN 名字长度值
+ * ROOT_INO 根i节点
+ */
+#define NAME_LEN 	14
+#define ROOT_INO 	1
 
 #define I_MAP_SLOTS 8
 #define Z_MAP_SLOTS 8
 #define SUPER_MAGIC 0x137F
 
-#define NR_OPEN 20
-#define NR_INODE 32
-#define NR_FILE 64
-#define NR_SUPER 8
-#define NR_HASH 307
-#define NR_BUFFERS nr_buffers
-#define BLOCK_SIZE 1024
+#define NR_OPEN 	20
+#define NR_INODE 	32
+#define NR_FILE 	64
+#define NR_SUPER 	8
+#define NR_HASH 	307
+#define NR_BUFFERS 	nr_buffers
+#define BLOCK_SIZE 	1024
 #define BLOCK_SIZE_BITS 10
 #ifndef NULL
 #define NULL ((void *) 0)
 #endif
 
+/*
+ * 每个BLOCK可存放的i节点数
+ */
 #define INODES_PER_BLOCK ((BLOCK_SIZE)/(sizeof (struct d_inode)))
+/*
+ * 每个BLOCK可存放的目录项数
+ */
 #define DIR_ENTRIES_PER_BLOCK ((BLOCK_SIZE)/(sizeof (struct dir_entry)))
 
-#define PIPE_HEAD(inode) ((inode).i_zone[0])
-#define PIPE_TAIL(inode) ((inode).i_zone[1])
-#define PIPE_SIZE(inode) ((PIPE_HEAD(inode)-PIPE_TAIL(inode))&(PAGE_SIZE-1))
-#define PIPE_EMPTY(inode) (PIPE_HEAD(inode)==PIPE_TAIL(inode))
-#define PIPE_FULL(inode) (PIPE_SIZE(inode)==(PAGE_SIZE-1))
-#define INC_PIPE(head) \
-__asm__("incl %0\n\tandl $4095,%0"::"m" (head))
+#define PIPE_HEAD(inode) 	((inode).i_zone[0])
+#define PIPE_TAIL(inode) 	((inode).i_zone[1])
+#define PIPE_SIZE(inode) 	((PIPE_HEAD(inode)-PIPE_TAIL(inode))&(PAGE_SIZE-1))
+#define PIPE_EMPTY(inode) 	(PIPE_HEAD(inode)==PIPE_TAIL(inode))
+#define PIPE_FULL(inode) 	(PIPE_SIZE(inode)==(PAGE_SIZE-1))
+#define INC_PIPE(head)		__asm__("incl %0\n\tandl $4095,%0"::"m" (head))
 
 typedef char buffer_block[BLOCK_SIZE];
 
 struct buffer_head {
-	char * b_data;			/* pointer to data block (1024 bytes) */
-	unsigned long b_blocknr;	/* block number */
-	unsigned short b_dev;		/* device (0 = free) */
-	unsigned char b_uptodate;
-	unsigned char b_dirt;		/* 0-clean,1-dirty */
-	unsigned char b_count;		/* users using this block */
-	unsigned char b_lock;		/* 0 - ok, 1 -locked */
-	struct task_struct * b_wait;
+	char * b_data;					/* pointer to data block (1024 bytes) */
+	unsigned long b_blocknr;		/* block number */
+	unsigned short b_dev;			/* device (0 = free) */
+	unsigned char b_uptodate;		/* 更新标志，表示数据已更新 */
+	unsigned char b_dirt;			/* 0-clean,1-dirty */
+	unsigned char b_count;			/* users using this block */
+	unsigned char b_lock;			/* 0 - ok, 1 -locked */
+	struct task_struct * b_wait;	/* 等待该缓冲区解锁的任务 */
 	struct buffer_head * b_prev;
 	struct buffer_head * b_next;
 	struct buffer_head * b_prev_free;
 	struct buffer_head * b_next_free;
 };
 
+/*
+ * 磁盘上的索引节点(i节点)数据结构
+ */
 struct d_inode {
-	unsigned short i_mode;
-	unsigned short i_uid;
-	unsigned long i_size;
-	unsigned long i_time;
-	unsigned char i_gid;
-	unsigned char i_nlinks;
-	unsigned short i_zone[9];
+	unsigned short i_mode;			/* 文件类型和属性 */
+	unsigned short i_uid;			/* 用户ID */
+	unsigned long i_size;			/* 文件大小 */
+	unsigned long i_time;			/* 修改时间 */
+	unsigned char i_gid;			/* 组ID */
+	unsigned char i_nlinks;			/* 链接数（多少个文件指向此处）*/
+	unsigned short i_zone[9];		/* 直接0-6, 间接7, 双重间接8 */
 };
 
+/*
+ * 内存中的i节点，前7相和d_inode是一样的
+ */
 struct m_inode {
 	unsigned short i_mode;
 	unsigned short i_uid;
@@ -98,8 +117,8 @@ struct m_inode {
 	unsigned char i_gid;
 	unsigned char i_nlinks;
 	unsigned short i_zone[9];
-/* these are in memory also */
-	struct task_struct * i_wait;
+	/* these are in memory also */
+	struct task_struct * i_wait;	/* 等待该i节点的任务 */
 	unsigned long i_atime;
 	unsigned long i_ctime;
 	unsigned short i_dev;
@@ -121,16 +140,19 @@ struct file {
 	off_t f_pos;
 };
 
+/*
+ * 内存中磁盘超级块
+ */
 struct super_block {
-	unsigned short s_ninodes;
-	unsigned short s_nzones;
+	unsigned short s_ninodes;		/* 节点数 */
+	unsigned short s_nzones;		/* 总逻辑块数 */
 	unsigned short s_imap_blocks;
 	unsigned short s_zmap_blocks;
 	unsigned short s_firstdatazone;
 	unsigned short s_log_zone_size;
 	unsigned long s_max_size;
 	unsigned short s_magic;
-/* These are only in memory */
+	/* These are only in memory */
 	struct buffer_head * s_imap[8];
 	struct buffer_head * s_zmap[8];
 	unsigned short s_dev;
@@ -143,6 +165,9 @@ struct super_block {
 	unsigned char s_dirt;
 };
 
+/*
+ * 磁盘上的超级块结构
+ */
 struct d_super_block {
 	unsigned short s_ninodes;
 	unsigned short s_nzones;
@@ -154,6 +179,9 @@ struct d_super_block {
 	unsigned short s_magic;
 };
 
+/*
+ * 文件目录结构
+ */
 struct dir_entry {
 	unsigned short inode;
 	char name[NAME_LEN];

@@ -21,10 +21,10 @@ extern desc_table idt,gdt;
  * 第四个是保留段
  * 
  */
-#define GDT_NUL 0
-#define GDT_CODE 1
-#define GDT_DATA 2
-#define GDT_TMP 3
+#define GDT_NUL 	0
+#define GDT_CODE 	1
+#define GDT_DATA 	2
+#define GDT_TMP 	3
 
 /*
  * 每个进程使用了第三个局部描述符
@@ -33,8 +33,8 @@ extern desc_table idt,gdt;
  * 第三个是数据段
  * 
  */
-#define LDT_NUL 0
-#define LDT_CODE 1
-#define LDT_DATA 2
+#define LDT_NUL 	0
+#define LDT_CODE 	1
+#define LDT_DATA 	2
 
 #endif

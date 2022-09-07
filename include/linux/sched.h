@@ -254,12 +254,12 @@ __asm__("cmpl %%ecx,current\n\t" \
  * 设置位于地址addr处描述符的基地址
  */
 #define _set_base(addr,base)  \
-__asm__ ("push %%edx\n\t" \
+__asm__ ("pushl %%edx\n\t" \
 	"movw %%dx,%0\n\t" \
 	"rorl $16,%%edx\n\t" \
 	"movb %%dl,%1\n\t" \
 	"movb %%dh,%2\n\t" \
-	"pop %%edx" \
+	"popl %%edx" \
 	::"m" (*((addr)+2)), \
 	 "m" (*((addr)+4)), \
 	 "m" (*((addr)+7)), \
@@ -270,14 +270,14 @@ __asm__ ("push %%edx\n\t" \
  * 设置位于地址addr处描述符的长度
  */
 #define _set_limit(addr,limit) \
-__asm__ ("push %%edx\n\t" \
+__asm__ ("pushl %%edx\n\t" \
 	"movw %%dx,%0\n\t" \
 	"rorl $16,%%edx\n\t" \
 	"movb %1,%%dh\n\t" \
 	"andb $0xf0,%%dh\n\t" \
 	"orb %%dh,%%dl\n\t" \
 	"movb %%dl,%1\n\t" \
-	"pop %%edx" \
+	"popl %%edx" \
 	::"m" (*(addr)), \
 	 "m" (*((addr)+6)), \
 	 "d" (limit) \
