@@ -39,9 +39,18 @@ struct request {
  * This is used in the elevator algorithm: Note that
  * reads always go before writes. This is natural: reads
  * are much more time-critical than writes.
+ * #define READ 	0
+ * #define WRITE 	1
+ * #define READA 	2
+ * #define WRITEA 	3
+ * 确定s1是否比s2的优先级高
+ * 读优先
+ * (s1)->cmd < (s2)->cmd 表示s1的优先级比s2高
+ * (s1)->cmd == (s2)->cmd 表示如果优先级一样，则通过设备进行对比，设备好低的优先
+ * 如果设备号一样，则根据扇区进行比较，小的优先
  */
-#define IN_ORDER(s1,s2) \
-((s1)->cmd<(s2)->cmd || ((s1)->cmd==(s2)->cmd && \
+#define IN_ORDER(s1, s2) \
+((s1)->cmd < (s2)->cmd || ((s1)->cmd == (s2)->cmd && \
 ((s1)->dev < (s2)->dev || ((s1)->dev == (s2)->dev && \
 (s1)->sector < (s2)->sector))))
 

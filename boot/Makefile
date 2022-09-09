@@ -4,7 +4,7 @@ LDFLAGS	+= -Ttext 0 -e _start
 
 all: bootsect setup
 
-bootsect: bootsect.s ../kernel.bin
+bootsect: bootsect.s
 	$(Q)echo "BUILD " $<
 	$(Q)$(AS) $(AFLAGS) -o bootsect.o bootsect.s
 	$(Q)$(LD) $(LDFLAGS) -o bootsect bootsect.o

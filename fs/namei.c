@@ -141,7 +141,7 @@ static struct buffer_head * find_entry(struct m_inode ** dir,
 			sb = get_super((*dir)->i_dev);
 			if (sb->s_imount) {
 				iput(*dir);
-				(*dir)=sb->s_imount;
+				(*dir) = sb->s_imount;
 				(*dir)->i_count++;
 			}
 		}
@@ -156,17 +156,21 @@ static struct buffer_head * find_entry(struct m_inode ** dir,
 	i = 0;
 	de = (struct dir_entry *) bh->b_data;
 	while (i < entries) {
-		if ((char *)de >= BLOCK_SIZE+bh->b_data) {
+		if ((char *)de >= BLOCK_SIZE + bh->b_data) {
 			brelse(bh);
 			bh = NULL;
-			if (!(block = bmap(*dir,i/DIR_ENTRIES_PER_BLOCK)) ||
-			    !(bh = bread((*dir)->i_dev,block))) {
+			/*
+			 * bmap函数会返回实际的逻辑块号，参数是i节点和相对i节点的块号偏移量
+			 * 
+			 */
+			if (!(block = bmap(*dir, i/DIR_ENTRIES_PER_BLOCK)) ||
+			    !(bh = bread((*dir)->i_dev, block))) {
 				i += DIR_ENTRIES_PER_BLOCK;
 				continue;
 			}
 			de = (struct dir_entry *) bh->b_data;
 		}
-		if (match(namelen,name,de)) {
+		if (match(namelen, name, de)) {
 			*res_dir = de;
 			return bh;
 		}
@@ -206,7 +210,7 @@ static struct buffer_head * add_entry(struct m_inode * dir,
 		return NULL;
 	if (!(block = dir->i_zone[0]))
 		return NULL;
-	if (!(bh = bread(dir->i_dev,block)))
+	if (!(bh = bread(dir->i_dev, block)))
 		return NULL;
 	i = 0;
 	de = (struct dir_entry *) bh->b_data;
@@ -214,15 +218,19 @@ static struct buffer_head * add_entry(struct m_inode * dir,
 		if ((char *)de >= BLOCK_SIZE+bh->b_data) {
 			brelse(bh);
 			bh = NULL;
-			block = create_block(dir,i/DIR_ENTRIES_PER_BLOCK);
+			block = create_block(dir, i/DIR_ENTRIES_PER_BLOCK);
 			if (!block)
 				return NULL;
-			if (!(bh = bread(dir->i_dev,block))) {
+			if (!(bh = bread(dir->i_dev, block))) {
 				i += DIR_ENTRIES_PER_BLOCK;
 				continue;
 			}
 			de = (struct dir_entry *) bh->b_data;
 		}
+		/*
+		 * 如果i*sizeof(struct dir_entry) >= dir->i_size
+		 * 说明这个i所在的entry可以用
+		 */
 		if (i*sizeof(struct dir_entry) >= dir->i_size) {
 			de->inode=0;
 			dir->i_size = (i+1)*sizeof(struct dir_entry);
@@ -258,7 +266,7 @@ static struct m_inode * get_dir(const char * pathname)
 	const char * thisname;
 	struct m_inode * inode;
 	struct buffer_head * bh;
-	int namelen,inr,idev;
+	int namelen, inr, idev;
 	struct dir_entry * de;
 
 	/*
@@ -276,6 +284,11 @@ static struct m_inode * get_dir(const char * pathname)
 	 * 如果第一个字符为'/'说明是绝对地址，则从当前进程的根目录开始操作
 	 * 否则从当前进程的工作目录开始操作
 	 * 否则错误
+	 * pathname is /usr/bin/src
+	 * 或者 bin/src
+	 * 前者将inode设置为当前进程的根目录
+	 * 后者将indde设置为当前进程工作目录
+	 * pathname++是为了去除前面的'/'
 	 */
 	if ((c = get_fs_byte(pathname)) == '/') {
 		inode = current->root;
@@ -289,6 +302,13 @@ static struct m_inode * get_dir(const char * pathname)
 	 */
 	inode->i_count++;
 	while (1) {
+		/*
+		 * thisname /usr/bin/src
+		 * 或者 bin/src
+		 * 第二次变成
+		 * bin/src
+		 * 或者src
+		 */
 		thisname = pathname;
 		/*
 		 * 如果该节点不是目录，并且没有权限直接返回NULL
@@ -299,6 +319,7 @@ static struct m_inode * get_dir(const char * pathname)
 		}
 		/*
 		 * 遍历pathname如果，直到c为0或者c为'/'
+		 * pathname usr/bin/src 或者 bin/src
 		 */
 		for(namelen = 0; (c = get_fs_byte(pathname++)) && (c != '/'); namelen++)
 			/* nothing */ ;
@@ -318,7 +339,7 @@ static struct m_inode * get_dir(const char * pathname)
 		idev = inode->i_dev;
 		brelse(bh);
 		iput(inode);
-		if (!(inode = iget(idev,inr)))
+		if (!(inode = iget(idev, inr)))
 			return NULL;
 	}
 }
@@ -337,14 +358,21 @@ static struct m_inode * dir_namei(const char * pathname,
 	char c;
 	const char * basename;
 	struct m_inode * dir;
-
+	/*
+	 * 根据pathname找到最终的目录，例如
+	 * /usr/src/linux
+	 * 最终找到/usr/src这个inode
+	 */
 	if (!(dir = get_dir(pathname)))
 		return NULL;
+	/*
+	 * 根据pathname或者basename
+	 */
 	basename = pathname;
-	while ((c=get_fs_byte(pathname++)))
-		if (c=='/')
-			basename=pathname;
-	*namelen = pathname-basename-1;
+	while ((c = get_fs_byte(pathname++)))
+		if (c == '/')
+			basename = pathname;
+	*namelen = pathname - basename - 1;
 	*name = basename;
 	return dir;
 }
@@ -403,17 +431,17 @@ int open_namei(const char * pathname, int flag, int mode,
 		flag |= O_WRONLY;
 	mode &= 0777 & ~current->umask;
 	mode |= I_REGULAR;
-	if (!(dir = dir_namei(pathname,&namelen,&basename)))
+	if (!(dir = dir_namei(pathname, &namelen, &basename)))
 		return -ENOENT;
 	if (!namelen) {			/* special case: '/usr/' etc */
 		if (!(flag & (O_ACCMODE|O_CREAT|O_TRUNC))) {
-			*res_inode=dir;
+			*res_inode = dir;
 			return 0;
 		}
 		iput(dir);
 		return -EISDIR;
 	}
-	bh = find_entry(&dir,basename,namelen,&de);
+	bh = find_entry(&dir, basename, namelen, &de);
 	if (!bh) {
 		if (!(flag & O_CREAT)) {
 			iput(dir);
@@ -431,7 +459,7 @@ int open_namei(const char * pathname, int flag, int mode,
 		inode->i_uid = current->euid;
 		inode->i_mode = mode;
 		inode->i_dirt = 1;
-		bh = add_entry(dir,basename,namelen,&de);
+		bh = add_entry(dir, basename, namelen, &de);
 		if (!bh) {
 			inode->i_nlinks--;
 			iput(inode);
@@ -451,7 +479,7 @@ int open_namei(const char * pathname, int flag, int mode,
 	iput(dir);
 	if (flag & O_EXCL)
 		return -EEXIST;
-	if (!(inode=iget(dev,inr)))
+	if (!(inode = iget(dev, inr)))
 		return -EACCES;
 	if ((S_ISDIR(inode->i_mode) && (flag & O_ACCMODE)) ||
 	    !permission(inode,ACC_MODE(flag))) {
@@ -475,33 +503,52 @@ int sys_mknod(const char * filename, int mode, int dev)
 	
 	if (!suser())
 		return -EPERM;
-	if (!(dir = dir_namei(filename,&namelen,&basename)))
+	/*
+	 * 根据filename获取当前目录的i节点以及basename
+	 */
+	if (!(dir = dir_namei(filename, &namelen, &basename)))
 		return -ENOENT;
+	/*
+	 * 如果basename的长度为0则退出
+	 */
 	if (!namelen) {
 		iput(dir);
 		return -ENOENT;
 	}
-	if (!permission(dir,MAY_WRITE)) {
+	/*
+	 * 检查权限
+	 */
+	if (!permission(dir, MAY_WRITE)) {
 		iput(dir);
 		return -EPERM;
 	}
-	bh = find_entry(&dir,basename,namelen,&de);
+	/*
+	 * 检查basename是否存在，如果存在返回错误
+	 */
+	bh = find_entry(&dir, basename, namelen, &de);
 	if (bh) {
 		brelse(bh);
 		iput(dir);
 		return -EEXIST;
 	}
+	/*
+	 * 获取一个空闲节点
+	 */
 	inode = new_inode(dir->i_dev);
 	if (!inode) {
 		iput(dir);
 		return -ENOSPC;
 	}
 	inode->i_mode = mode;
+	/*
+	 * 如果是字符设备文件或者块设备文件，i_zone[0]为设备号
+	 */
 	if (S_ISBLK(mode) || S_ISCHR(mode))
 		inode->i_zone[0] = dev;
 	inode->i_mtime = inode->i_atime = CURRENT_TIME;
 	inode->i_dirt = 1;
-	bh = add_entry(dir,basename,namelen,&de);
+
+	bh = add_entry(dir, basename, namelen, &de);
 	if (!bh) {
 		iput(dir);
 		inode->i_nlinks=0;
@@ -516,6 +563,9 @@ int sys_mknod(const char * filename, int mode, int dev)
 	return 0;
 }
 
+/*
+ * 创建目录
+ */
 int sys_mkdir(const char * pathname, int mode)
 {
 	const char * basename;
@@ -526,56 +576,85 @@ int sys_mkdir(const char * pathname, int mode)
 
 	if (!suser())
 		return -EPERM;
-	if (!(dir = dir_namei(pathname,&namelen,&basename)))
+	/*
+	 * 或者当前目录的i节点
+	 * 此时basename为要创建的目录的名称
+	 */
+	if (!(dir = dir_namei(pathname, &namelen, &basename)))
 		return -ENOENT;
+	/*
+	 * 如果目录名称长度为0则退出
+	 */
 	if (!namelen) {
 		iput(dir);
 		return -ENOENT;
 	}
-	if (!permission(dir,MAY_WRITE)) {
+	/*
+	 * 检查当前目录是否可写
+	 */
+	if (!permission(dir, MAY_WRITE)) {
 		iput(dir);
 		return -EPERM;
 	}
-	bh = find_entry(&dir,basename,namelen,&de);
+	/*
+	 * 在当前目录中查找basename
+	 * 如果找到说明当前目录已经存在名字为basename的入口
+	 * 如果存在也返回错误
+	 */
+	bh = find_entry(&dir, basename, namelen, &de);
 	if (bh) {
 		brelse(bh);
 		iput(dir);
 		return -EEXIST;
 	}
+	/*
+	 * 新申请一个节点，new_inode函数会新会将i节点位图置位
+	 * inode->i_num表示indoe的索引
+	 */
 	inode = new_inode(dir->i_dev);
 	if (!inode) {
 		iput(dir);
 		return -ENOSPC;
 	}
+	/*
+	 * 为什么是32，因为需要在目录里建立两个文件，‘.’和'..'
+	 * 表示当前目录和上一级目录
+	 */
 	inode->i_size = 32;
 	inode->i_dirt = 1;
 	inode->i_mtime = inode->i_atime = CURRENT_TIME;
-	if (!(inode->i_zone[0]=new_block(inode->i_dev))) {
+	/*
+	 * new_block返回实际的块索引并将块索引对应的块清零
+	 */
+	if (!(inode->i_zone[0] = new_block(inode->i_dev))) {
 		iput(dir);
 		inode->i_nlinks--;
 		iput(inode);
 		return -ENOSPC;
 	}
 	inode->i_dirt = 1;
-	if (!(dir_block=bread(inode->i_dev,inode->i_zone[0]))) {
+	/*
+	 * dir_block为高速缓存
+	 */
+	if (!(dir_block = bread(inode->i_dev, inode->i_zone[0]))) {
 		iput(dir);
-		free_block(inode->i_dev,inode->i_zone[0]);
+		free_block(inode->i_dev, inode->i_zone[0]);
 		inode->i_nlinks--;
 		iput(inode);
 		return -ERROR;
 	}
 	de = (struct dir_entry *) dir_block->b_data;
-	de->inode=inode->i_num;
+	de->inode = inode->i_num;
 	strcpy(de->name,".");
 	de++;
 	de->inode = dir->i_num;
-	strcpy(de->name,"..");
+	strcpy(de->name, "..");
 	inode->i_nlinks = 2;
 	dir_block->b_dirt = 1;
 	brelse(dir_block);
 	inode->i_mode = I_DIRECTORY | (mode & 0777 & ~current->umask);
 	inode->i_dirt = 1;
-	bh = add_entry(dir,basename,namelen,&de);
+	bh = add_entry(dir, basename, namelen, &de);
 	if (!bh) {
 		iput(dir);
 		free_block(inode->i_dev,inode->i_zone[0]);

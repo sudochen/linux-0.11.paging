@@ -58,7 +58,9 @@ __res;})
 
 /*
  * 释放设备dev上数据区中的逻辑块block
- * 复位指定逻辑块block的逻辑块位图bit
+ * 将逻辑快位图block设置为0，并将此block所在位图的高速缓存设置为已修改
+ * 我们看到，这个函数只是设置位图，但是磁盘的实际内容还在
+ * 
  */
 void free_block(int dev, int block)
 {
@@ -96,27 +98,38 @@ void free_block(int dev, int block)
 	 * 计算block在数据区开始算起的数据逻辑块号
 	 * 然后对逻辑块位图进行操作
 	 * 复位对应的比特位，如果原来就是0，则panic
+	 * 
+	 * 下面假设block为sb->s_firstdatazone则block的计算值为1
+	 * 也就是s_zmap的bit1对应第一个逻辑块
+	 * 
 	 */
 	block -= sb->s_firstdatazone - 1 ;
-	if (clear_bit(block&8191,sb->s_zmap[block/8192]->b_data)) {
-		printk("block (%04x:%d) ",dev,block+sb->s_firstdatazone-1);
+	if (clear_bit(block&8191, sb->s_zmap[block/8192]->b_data)) {
+		printk("block (%04x:%d) ", dev,block + sb->s_firstdatazone-1);
 		panic("free_block: bit already cleared");
 	}
 	/*
 	 * 置相应逻辑块位图所在缓冲区已修改标志
+	 * 随后会刷入磁盘中
 	 */
 	sb->s_zmap[block/8192]->b_dirt = 1;
 }
 
 /*
- * 向设备dev申请一个逻辑块，返回逻辑块号
- * 置位相应逻辑块号的bit
+ * 向设备dev申请一个逻辑块，返回实际逻辑块号
+ * 在逻辑块位图中找到一个为0的位索引为j
+ * 在逻辑块位图中将位j设置为1
+ * 设置逻辑块位图高速缓存为已修改
+ * 根据j计算实际块的索引
+ * 根据实际索引获取一个高速缓存，并将高速缓存清零
+ * 设置告诉缓存已修改
+ * 
  */
 int new_block(int dev)
 {
 	struct buffer_head * bh;
 	struct super_block * sb;
-	int i,j;
+	int i, j;
 
 	/*
 	 * 获取超级块
@@ -125,19 +138,19 @@ int new_block(int dev)
 		panic("trying to get new block from nonexistant device");
 	
 	/*
-	 * 遍历逻辑块位图，找到第一个为0的bit
+	 * 遍历逻辑块位图，找到第一个为0的bit，bit0是保留的，所以j不可能为0
 	 */
 	j = 8192;
-	for (i=0 ; i<8 ; i++)
-		if ((bh=sb->s_zmap[i]))
-			if ((j=find_first_zero(bh->b_data))<8192)
+	for (i = 0; i < 8; i++)
+		if ((bh = sb->s_zmap[i]))
+			if ((j = find_first_zero(bh->b_data)) < 8192)
 				break;
-	if (i>=8 || !bh || j>=8192)
+	if (i >= 8 || !bh || j >= 8192)
 		return 0;
 	/*
 	 * 将逻辑块bit位置位，如果原来就是1则panic
 	 */
-	if (set_bit(j,bh->b_data))
+	if (set_bit(j, bh->b_data))
 		panic("new_block: bit already set");
 	/*
 	 * 设置缓冲区脏标记
@@ -145,16 +158,21 @@ int new_block(int dev)
 	bh->b_dirt = 1;
 	/*
 	 * 如果逻辑块大于设备总的逻辑块则失败
+	 * 假设i为0，j的值为1，则下面表达式的值为sb->s_firstdatazone
+	 * 表示第一个数据块
+	 * 这样就和上面的free_block对应了
+	 * 而inode就不用这么麻烦了
 	 */
-	j += i*8192 + sb->s_firstdatazone-1;
+	j += i*8192 + sb->s_firstdatazone - 1;
 	if (j >= sb->s_nzones)
 		return 0;
 	/*
 	 * 获取该设备的该新逻辑块数据，如果失败则panic
 	 * 并判断引用标志必须为1
 	 */
-	if (!(bh=getblk(dev,j)))
+	if (!(bh = getblk(dev, j)))
 		panic("new_block: cannot get block");
+
 	if (bh->b_count != 1)
 		panic("new block: count is != 1");
 	/*
@@ -179,21 +197,21 @@ void free_inode(struct m_inode * inode)
 	if (!inode)
 		return;
 	/*
-	 * 如果i节点的设备号字段为0，说明该节点无用，将i节点对应的内存清除
+	 * 如果i节点的设备号字段为0，说明该节点无用
 	 */
 	if (!inode->i_dev) {
-		memset(inode,0,sizeof(*inode));
+		memset(inode, 0, sizeof(*inode));
 		return;
 	}
 	/*
 	 * 如果i节点还有其他程序引用，则不能释放
 	 */
-	if (inode->i_count>1) {
+	if (inode->i_count > 1) {
 		printk("trying to free inode with count=%d\n",inode->i_count);
 		panic("free_inode");
 	}
 	/*
-	 * 如果链接数部位0，说明还有其他文件或者目录使用该节点，不释放
+	 * 如果链接数不为0，说明还有其他文件或者目录使用该节点，不释放
 	 */
 	if (inode->i_nlinks)
 		panic("trying to free inode with links");
@@ -210,18 +228,18 @@ void free_inode(struct m_inode * inode)
 	/*
 	 * 如果i节点对应的bit所在的高速缓存不存在则出错
 	 */
-	if (!(bh=sb->s_imap[inode->i_num>>13]))
+	if (!(bh = sb->s_imap[inode->i_num>>13]))
 		panic("nonexistent imap in superblock");
 	/*
 	 * 清零bit
 	 */
-	if (clear_bit(inode->i_num&8191,bh->b_data))
+	if (clear_bit(inode->i_num&8191, bh->b_data))
 		printk("free_inode: bit already cleared.\n\r");
 	/*
 	 * 设置已修改标志，并清空该i节点所占的内存
 	 */
 	bh->b_dirt = 1;
-	memset(inode,0,sizeof(*inode));
+	memset(inode, 0, sizeof(*inode));
 }
 
 /*
@@ -237,7 +255,7 @@ struct m_inode * new_inode(int dev)
 	/*
 	 * 获取一个i节点
 	 */
-	if (!(inode=get_empty_inode()))
+	if (!(inode = get_empty_inode()))
 		return NULL;
 	/*
 	 * 获取超级块
@@ -248,31 +266,32 @@ struct m_inode * new_inode(int dev)
 	 * 寻找第一个为0的i节点的bit
 	 */
 	j = 8192;
-	for (i=0 ; i<8 ; i++)
-		if ((bh=sb->s_imap[i]))
-			if ((j=find_first_zero(bh->b_data))<8192)
+	for (i = 0; i < 8; i++)
+		if ((bh = sb->s_imap[i]))
+			if ((j = find_first_zero(bh->b_data)) < 8192)
 				break;
 	if (!bh || j >= 8192 || j+i*8192 > sb->s_ninodes) {
 		iput(inode);
 		return NULL;
 	}
 	/*
-	 * 置位
+	 * 置位j，j就是找到的inode的编号，也就是i节点位图的偏移
 	 */
-	if (set_bit(j,bh->b_data))
+	if (set_bit(j, bh->b_data))
 		panic("new_inode: bit already set");
 	/*
 	 * 设置该i节点位图所在的高速缓存已修改标志
+	 * 后续该位置会被刷入磁盘
 	 */
 	bh->b_dirt = 1;
-	inode->i_count=1;
-	inode->i_nlinks=1;
-	inode->i_dev=dev;
-	inode->i_uid=current->euid;
-	inode->i_gid=current->egid;
-	inode->i_dirt=1;
+	inode->i_count = 1;
+	inode->i_nlinks = 1;
+	inode->i_dev = dev;
+	inode->i_uid = current->euid;
+	inode->i_gid = current->egid;
+	inode->i_dirt = 1;
 	/*
-	 * 将该i节点的i_num指向该i节点所在的位图的bit
+	 * 将该i节点的i_num设置为i节点的bit位
 	 */
 	inode->i_num = j + i*8192;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;

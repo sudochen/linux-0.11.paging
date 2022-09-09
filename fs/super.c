@@ -74,13 +74,13 @@ struct super_block * get_super(int dev)
 
 	if (!dev)
 		return NULL;
-	s = 0+super_block;
-	while (s < NR_SUPER+super_block)
+	s = 0 + super_block;
+	while (s < NR_SUPER + super_block)
 		if (s->s_dev == dev) {
 			wait_on_super(s);
 			if (s->s_dev == dev)
 				return s;
-			s = 0+super_block;
+			s = 0 + super_block;
 		} else
 			s++;
 	return NULL;
@@ -124,14 +124,26 @@ static struct super_block * read_super(int dev)
 	if (!dev)
 		return NULL;
 	check_disk_change(dev);
+	/*
+	 * 根据dev获取超级块，没有则进行申请
+	 * super_block是一个8个结构体数组
+	 * dev是设备号，包含了主设备号和次设备号
+	 */
 	if ((s = get_super(dev)))
 		return s;
-	for (s = 0+super_block ;; s++) {
-		if (s >= NR_SUPER+super_block)
+	/* 
+	 * 如果没有找到，在在super_block数组里找到一个空闲的
+	 * 找到一个空闲的超级块
+	 */
+	for (s = 0 + super_block; ;s++) {
+		if (s >= NR_SUPER + super_block)
 			return NULL;
 		if (!s->s_dev)
 			break;
 	}
+	/*
+	 * s_dev设备号，如果是硬盘的第一个分区则是0x301
+	 */
 	s->s_dev = dev;
 	s->s_isup = NULL;
 	s->s_imount = NULL;
@@ -139,43 +151,73 @@ static struct super_block * read_super(int dev)
 	s->s_rd_only = 0;
 	s->s_dirt = 0;
 	lock_super(s);
-	if (!(bh = bread(dev,1))) {
+	printk("%s bread dev is 0x%x\n", __func__, dev);
+	/*
+	 * bread从设备上读取第一个块，
+	 * 第0个块成为引导块，保留使用
+	 * 
+	 */
+	if (!(bh = bread(dev, 1))) {
 		s->s_dev=0;
 		free_super(s);
 		return NULL;
 	}
+	/*
+	 * 使用磁盘的超级块数据填充内存的超级块结构体中
+	 */
 	*((struct d_super_block *) s) =
 		*((struct d_super_block *) bh->b_data);
 	brelse(bh);
+	/*
+	 * 判断超级块的magic number是否为0x13f7
+	 */
 	if (s->s_magic != SUPER_MAGIC) {
 		s->s_dev = 0;
 		free_super(s);
 		return NULL;
 	}
-	for (i=0;i<I_MAP_SLOTS;i++)
+	/*
+	 * 清除i节点位图和逻辑块位图
+	 */
+	for (i=0; i<I_MAP_SLOTS; i++)
 		s->s_imap[i] = NULL;
-	for (i=0;i<Z_MAP_SLOTS;i++)
+	for (i=0; i<Z_MAP_SLOTS; i++)
 		s->s_zmap[i] = NULL;
-	block=2;
+	/*
+	 * 读i节点和逻辑位图节点信息
+	 * s_imap_blocks表示i节点位图使用多个块保存，做多8个
+	 * s_zmap_blocks表示逻辑块位图使用多个个块保存，最多8个
+	 */
+	block = 2;
+	printk("%s s_imap_blocks for inodes bit map is %x\n", __func__, s->s_imap_blocks);
+	printk("%s s_zmap_blocks for data block bit map is %x\n", __func__, s->s_zmap_blocks);
+
 	for (i=0 ; i < s->s_imap_blocks ; i++)
-		if ((s->s_imap[i]=bread(dev,block)))
+		if ((s->s_imap[i] = bread(dev, block)))
 			block++;
 		else
 			break;
 	for (i=0 ; i < s->s_zmap_blocks ; i++)
-		if ((s->s_zmap[i]=bread(dev,block)))
+		if ((s->s_zmap[i] = bread(dev, block)))
 			block++;
 		else
 			break;
-	if (block != 2+s->s_imap_blocks+s->s_zmap_blocks) {
-		for(i=0;i<I_MAP_SLOTS;i++)
+	/*
+	 * 检验block数量对还是不对
+	 */
+	if (block != 2 + s->s_imap_blocks + s->s_zmap_blocks) {
+		for(i = 0; i < I_MAP_SLOTS; i++)
 			brelse(s->s_imap[i]);
-		for(i=0;i<Z_MAP_SLOTS;i++)
+		for(i = 0; i < Z_MAP_SLOTS; i++)
 			brelse(s->s_zmap[i]);
 		s->s_dev=0;
 		free_super(s);
 		return NULL;
 	}
+	/*
+	 * i节点位图和逻辑块位图的0位图都不可能为0
+	 * 因为很多相关函数中，0意味着失败
+	 */
 	s->s_imap[0]->b_data[0] |= 1;
 	s->s_zmap[0]->b_data[0] |= 1;
 	free_super(s);
@@ -272,7 +314,7 @@ void mount_root(void)
 	/*
 	 * 初始化文件表数组
 	 */
-	for(i=0; i<NR_FILE; i++)
+	for(i = 0; i < NR_FILE; i++)
 		file_table[i].f_count=0;
 
 	/*
@@ -294,20 +336,21 @@ void mount_root(void)
 
 	/*
 	 * 从根文件系统上读取超级块，如果失败则panic 
+	 * p是super_block超级块
 	 */
-	if (!(p=read_super(ROOT_DEV)))
+	if (!(p = read_super(ROOT_DEV)))
 		panic("Unable to mount root");
 	
 	/*
 	 * 从设备上获取根i节点
 	 */
-	if (!(mi=iget(ROOT_DEV, ROOT_INO)))
+	if (!(mi = iget(ROOT_DEV, ROOT_INO)))
 		panic("Unable to read root i-node");
 	/*
-	 * 从逻辑上讲，该i节点引用增加了3次
+	 * 从逻辑上讲，该i节点引用增加了4次
 	 * 下面分析
 	 */
-	mi->i_count += 3 ;	/* NOTE! it is logically used 4 times, not 1 */
+	mi->i_count += 4 ;	/* NOTE! it is logically used 4 times, not 1 */
 	/*
 	 * i节点安装到超级块中，引用+1
 	 */
@@ -336,18 +379,19 @@ void mount_root(void)
 	 * minix文件系统最大64M
 	 * inode代表一个文件或者文件夹
 	 */
-	i=p->s_nzones;
+	i = p->s_nzones;
 	while (--i >= 0)
-		if (!test_bit(i&8191,p->s_zmap[i>>13]->b_data))
+		if (!test_bit(i&8191, p->s_zmap[i>>13]->b_data))
 			free++;
-	printk("%d/%d free blocks\n\r",free,p->s_nzones);
+	printk("%s %d/%d free blocks\n\r", __func__, free, p->s_nzones);
 	/*
 	 * 重置free，计算inode
 	 */
 	free=0;
-	i=p->s_ninodes+1;
+	i = p->s_ninodes + 1;
 	while (--i >= 0)
 		if (!test_bit(i&8191,p->s_imap[i>>13]->b_data))
 			free++;
-	printk("%d/%d free inodes\n\r",free,p->s_ninodes);
+	printk("%s %d/%d free inodes\n\r", __func__, free, p->s_ninodes);
+	printk("%s %d is firstdatazone\n\r", __func__, p->s_firstdatazone);
 }

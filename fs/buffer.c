@@ -206,8 +206,8 @@ static struct buffer_head * find_buffer(int dev, int block)
 {		
 	struct buffer_head * tmp;
 
-	for (tmp = hash(dev,block) ; tmp != NULL ; tmp = tmp->b_next)
-		if (tmp->b_dev==dev && tmp->b_blocknr==block)
+	for (tmp = hash(dev, block); tmp != NULL; tmp = tmp->b_next)
+		if (tmp->b_dev == dev && tmp->b_blocknr == block)
 			return tmp;
 	return NULL;
 }
@@ -264,31 +264,38 @@ struct buffer_head * get_hash_table(int dev, int block)
  * 检查所指定的缓冲区是否已经在告诉缓冲中
  * 如果不在，需要建立
  */
-struct buffer_head * getblk(int dev,int block)
+struct buffer_head * getblk(int dev, int block)
 {
 	struct buffer_head * tmp, * bh;
 
 repeat:
 	/*
-	 * 先获取，如果存在直接返回
+	 * 先根据dev和block在高速缓存hash表中获取，如果存在直接返回
 	 */
-	if ((bh = get_hash_table(dev,block)))
+	if ((bh = get_hash_table(dev, block)))
 		return bh;
 
 	/*
 	 * tmp指向缓冲区头部
+	 * 下面的代码意思是需要找到一个b_count为0的高速缓存
 	 */	
 	tmp = free_list;
 	do {
 		if (tmp->b_count)
 			continue;
-		if (!bh || BADNESS(tmp)<BADNESS(bh)) {
+		/*
+		 * 如果bh为空，第一次肯定为空
+		 */
+		if (!bh || BADNESS(tmp) < BADNESS(bh)) {
 			bh = tmp;
 			if (!BADNESS(tmp))
 				break;
 		}
 	/* and repeat until we find something good */
 	} while ((tmp = tmp->b_next_free) != free_list);
+	/*
+	 * 如果没有找到，则睡眠一会儿，然后继续找
+	 */
 	if (!bh) {
 		sleep_on(&buffer_wait);
 		goto repeat;
@@ -304,16 +311,19 @@ repeat:
 	}
 	/* NOTE!! While we slept waiting for this block, somebody else might */
 	/* already have added "this" block to the cache. check it */
-	if (find_buffer(dev,block))
+	/*
+	 * 在上面的等待可能发生进程切换，也有可能导致指定的设备和块已经被加进入了
+	 */
+	if (find_buffer(dev, block))
 		goto repeat;
 	/* OK, FINALLY we know that this buffer is the only one of it's kind, */
 	/* and that it's unused (b_count=0), unlocked (b_lock=0), and clean */
-	bh->b_count=1;
-	bh->b_dirt=0;
-	bh->b_uptodate=0;
+	bh->b_count = 1;
+	bh->b_dirt = 0;
+	bh->b_uptodate = 0;
 	remove_from_queues(bh);
-	bh->b_dev=dev;
-	bh->b_blocknr=block;
+	bh->b_dev = dev;
+	bh->b_blocknr = block;
 	insert_into_queues(bh);
 	return bh;
 }
@@ -342,7 +352,7 @@ struct buffer_head * bread(int dev,int block)
 	/*
 	 * 获取一个高速缓存块
 	 */
-	if (!(bh=getblk(dev,block)))
+	if (!(bh = getblk(dev, block)))
 		panic("bread: getblk returned NULL\n");
 	/*
 	 * 如果该高速缓冲块是有效的，直接返回

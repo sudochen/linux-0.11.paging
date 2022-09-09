@@ -69,29 +69,48 @@ static void add_request(struct blk_dev_struct * dev, struct request * req)
 	cli();
 	if (req->bh)
 		req->bh->b_dirt = 0;
+	/*
+	 * 如果dev当前的请求项为空，表示当前设备没有请求项
+	 * 因此将req作为当前请求项，并立即进行request回调
+	 */
 	if (!(tmp = dev->current_request)) {
 		dev->current_request = req;
 		sti();
 		(dev->request_fn)();
 		return;
 	}
-	for ( ; tmp->next ; tmp=tmp->next)
-		if ((IN_ORDER(tmp,req) || 
-		    !IN_ORDER(tmp,tmp->next)) &&
-		    IN_ORDER(req,tmp->next))
+	for ( ;tmp->next; tmp = tmp->next) {
+		/*
+		 * 如果tmp的优先级比req高或者tmp比tmp的下一个的优先级高
+		 * 并且req比tmp的下一个优先高
+		 * 这个算法的目的是让磁头尽可能少的移动从而提高性能
+		 * 电梯算法
+		 */
+		if ((IN_ORDER(tmp, req) || !IN_ORDER(tmp, tmp->next)) &&
+		    (IN_ORDER(req, tmp->next))) {
 			break;
+			}
+	}
+	/*
+	 * 将req插入request链表中
+	 */
 	req->next=tmp->next;
 	tmp->next=req;
 	sti();
 }
 
-static void make_request(int major,int rw, struct buffer_head * bh)
+static void make_request(int major, int rw, struct buffer_head * bh)
 {
 	struct request * req;
 	int rw_ahead;
 
-/* WRITEA/READA is special case - it is not really needed, so if the */
-/* buffer is locked, we just forget about it, else it's a normal read */
+	/* WRITEA/READA is special case - it is not really needed, so if the */
+	/* buffer is locked, we just forget about it, else it's a normal read */
+	/*
+	 * rw_ahead表示rw是READA或者WRITEA
+	 * 对于是rw_ahead的，如果缓冲区正在使用，则直接退出
+	 * 否则就按照普通的READ, WRITE命令进行
+	 */
 	if ((rw_ahead = (rw == READA || rw == WRITEA))) {
 		if (bh->b_lock)
 			return;
@@ -103,24 +122,39 @@ static void make_request(int major,int rw, struct buffer_head * bh)
 	if (rw!=READ && rw!=WRITE)
 		panic("Bad block dev command, must be R/W/RA/WA");
 	lock_buffer(bh);
+	/*
+	 * 如果写命令的数据没有被修改过或者读命令的数据没有被更新过直接退出
+	 * 不用添加这个请求
+	 */
 	if ((rw == WRITE && !bh->b_dirt) || (rw == READ && bh->b_uptodate)) {
 		unlock_buffer(bh);
 		return;
 	}
 repeat:
-/* we don't allow the write-requests to fill up the queue completely:
- * we want some room for reads: they take precedence. The last third
- * of the requests are only for reads.
- */
+	/* we don't allow the write-requests to fill up the queue completely:
+	 * we want some room for reads: they take precedence. The last third
+	 * of the requests are only for reads.
+	 * 
+	 * 读操作优先，
+	 * request的开始给读请求使用
+	 * 在reqeust的2/3开始给写请求使用
+	 */
 	if (rw == READ)
-		req = request+NR_REQUEST;
+		req = request + NR_REQUEST;
 	else
-		req = request+((NR_REQUEST*2)/3);
-/* find an empty request */
+		req = request + ((NR_REQUEST*2)/3);
+	/* find an empty request */
+	/*
+	 * 找一个空的请求项
+	 */
 	while (--req >= request)
-		if (req->dev<0)
+		if (req->dev < 0)
 			break;
-/* if none found, sleep on new requests: check for rw_ahead */
+	/* if none found, sleep on new requests: check for rw_ahead */
+	/*
+	 * 如果没有找到一个空的请求项，如果是rw_ahead则直接退出
+	 * 否则进行睡眠并再次寻找
+	 */
 	if (req < request) {
 		if (rw_ahead) {
 			unlock_buffer(bh);
@@ -129,17 +163,25 @@ repeat:
 		sleep_on(&wait_for_request);
 		goto repeat;
 	}
-/* fill up the request-info, and add it to the queue */
+	/* fill up the request-info, and add it to the queue */
 	req->dev = bh->b_dev;
 	req->cmd = rw;
-	req->errors=0;
+	req->errors = 0;
+	/*
+	 * 将块转换成扇区，一个块等于两个扇区，1K空间
+	 * nr_sectors读两个扇区，也就是一个块
+	 */
 	req->sector = bh->b_blocknr<<1;
 	req->nr_sectors = 2;
 	req->buffer = bh->b_data;
 	req->waiting = NULL;
 	req->bh = bh;
 	req->next = NULL;
-	add_request(major+blk_dev,req);
+	/*
+	 * major是主设备号
+	 * 将req加入blk_dev[major].current_request
+	 */
+	add_request(major + blk_dev, req);
 }
 
 void ll_rw_block(int rw, struct buffer_head * bh)
@@ -147,11 +189,11 @@ void ll_rw_block(int rw, struct buffer_head * bh)
 	unsigned int major;
 
 	if ((major=MAJOR(bh->b_dev)) >= NR_BLK_DEV ||
-	!(blk_dev[major].request_fn)) {
+		(!(blk_dev[major].request_fn))) {
 		printk("Trying to read nonexistent block-device\n\r");
 		return;
 	}
-	make_request(major,rw,bh);
+	make_request(major, rw, bh);
 }
 
 void blk_dev_init(void)
