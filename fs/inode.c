@@ -114,9 +114,9 @@ static int _bmap(struct m_inode * inode, int block, int create)
 		 * 最后返回逻辑块号
 		 */
 		if (create && !inode->i_zone[block])
-			if ((inode->i_zone[block]=new_block(inode->i_dev))) {
-				inode->i_ctime=CURRENT_TIME;
-				inode->i_dirt=1;
+			if ((inode->i_zone[block] = new_block(inode->i_dev))) {
+				inode->i_ctime = CURRENT_TIME;
+				inode->i_dirt = 1;
 			}
 		return inode->i_zone[block];
 	}
@@ -131,8 +131,8 @@ static int _bmap(struct m_inode * inode, int block, int create)
 		 */
 		if (create && !inode->i_zone[7])
 			if ((inode->i_zone[7] = new_block(inode->i_dev))) {
-				inode->i_dirt=1;
-				inode->i_ctime=CURRENT_TIME;
+				inode->i_dirt = 1;
+				inode->i_ctime = CURRENT_TIME;
 			}
 		/*
 		 * 申请块失败
@@ -142,7 +142,7 @@ static int _bmap(struct m_inode * inode, int block, int create)
 		/*
 		 * 读申请的块数据存放在bh中
 		 */
-		if (!(bh = bread(inode->i_dev,inode->i_zone[7])))
+		if (!(bh = bread(inode->i_dev, inode->i_zone[7])))
 			return 0;
 		/*
 		 * 取间接块的block的逻辑块号
@@ -154,7 +154,7 @@ static int _bmap(struct m_inode * inode, int block, int create)
 		 */
 		if (create && !i)
 			if ((i = new_block(inode->i_dev))) {
-				((unsigned short *) (bh->b_data))[block ]= i;
+				((unsigned short *) (bh->b_data))[block] = i;
 				bh->b_dirt = 1;
 			}
 		brelse(bh);
@@ -165,33 +165,33 @@ static int _bmap(struct m_inode * inode, int block, int create)
 	 */
 	block -= 512;
 	if (create && !inode->i_zone[8])
-		if ((inode->i_zone[8]=new_block(inode->i_dev))) {
-			inode->i_dirt=1;
-			inode->i_ctime=CURRENT_TIME;
+		if ((inode->i_zone[8] = new_block(inode->i_dev))) {
+			inode->i_dirt = 1;
+			inode->i_ctime = CURRENT_TIME;
 		}
 	if (!inode->i_zone[8])
 		return 0;
-	if (!(bh=bread(inode->i_dev,inode->i_zone[8])))
+	if (!(bh = bread(inode->i_dev,inode->i_zone[8])))
 		return 0;
 	i = ((unsigned short *)bh->b_data)[block>>9];
 	if (create && !i)
-		if ((i=new_block(inode->i_dev))) {
+		if ((i = new_block(inode->i_dev))) {
 			((unsigned short *) (bh->b_data))[block>>9]=i;
 			bh->b_dirt=1;
 		}
 	brelse(bh);
 	if (!i)
 		return 0;
-	if (!(bh=bread(inode->i_dev,i)))
+	if (!(bh = bread(inode->i_dev,i)))
 		return 0;
 	/*
 	 * block&511为为了限制其大小最大为511
 	 */
 	i = ((unsigned short *)bh->b_data)[block&511];
 	if (create && !i)
-		if ((i=new_block(inode->i_dev))) {
+		if ((i = new_block(inode->i_dev))) {
 			((unsigned short *) (bh->b_data))[block&511]=i;
-			bh->b_dirt=1;
+			bh->b_dirt = 1;
 		}
 	brelse(bh);
 	return i;
@@ -342,22 +342,31 @@ struct m_inode * iget(int dev, int nr)
 
 	if (!dev)
 		panic("iget with dev==0");
+	/*
+	 * 从inodetabale中获取一个空的inode
+	 */
 	empty = get_empty_inode();
 	inode = inode_table;
 	/*
-	 * 扫描inode_table找到i节点的dev和num为特定值的i节点
+	 * 扫描inode_table找到i节点的dev和nr为特定值的i节点
 	 */
 	while (inode < NR_INODE + inode_table) {
+		/*
+		 * 判断设备号和i节点编号是否为指定的值
+		 * 如果不是，继续尝试下一个inode
+		 */
 		if (inode->i_dev != dev || inode->i_num != nr) {
 			inode++;
 			continue;
 		}
 		/*
-		 * 等待i节点
+		 * 在这里说明已经找到了指定的i节点
+		 * 等待inode解锁，这里可能发生睡眠
 		 */
 		wait_on_inode(inode);
 		/*
 		 * 确保在等待期间i节点信息没有发生变化
+		 * 如果发生变化，将inode_table赋值给inode并继续寻找
 		 */
 		if (inode->i_dev != dev || inode->i_num != nr) {
 			inode = inode_table;
@@ -368,12 +377,13 @@ struct m_inode * iget(int dev, int nr)
 		 */
 		inode->i_count++;
 		/*
-		 * 如果i节点是其他文件系统的安装点
-		 * 则在超级块中搜索安装在i节点的超级块
-		 * 如果没有找到，显示出错信息，理论上肯定能找到
+		 * 如果inode的i_mount有值说明这个i节点挂载了其他分区
 		 */
 		if (inode->i_mount) {
 			int i;
+			/*
+			 * 扫描超级块并找到inode挂载的超级块
+			 */
 			for (i = 0; i < NR_SUPER; i++)
 				if (super_block[i].s_imount == inode)
 					break;
@@ -427,14 +437,20 @@ static void read_inode(struct m_inode * inode)
 		panic("trying to read inode without dev");
 	/*
 	 * 该i节点所在的逻辑块号
+	 * 启动块+超级块+imap_blocks+zmap_blocks
+	 * (inode->i_num-1)/INODES_PER_BLOCK表示一个块中存放多个inode
+	 * 这个意思是这个indo在第几个块中
 	 */
 	block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks +
 		(inode->i_num-1)/INODES_PER_BLOCK;
 	/*
-	 * 从逻辑块block读取一块数据，并使用块数据进行填充
+	 * 从逻辑块block读取一块数据，返回值为高速缓存结构体
 	 */
-	if (!(bh=bread(inode->i_dev, block)))
+	if (!(bh = bread(inode->i_dev, block)))
 		panic("unable to read i-node block");
+	/*
+	 * 使用磁盘的i节点信息填充inode结构体
+	 */
 	*(struct d_inode *)inode =
 		((struct d_inode *)bh->b_data)
 			[(inode->i_num-1)%INODES_PER_BLOCK];
@@ -443,7 +459,7 @@ static void read_inode(struct m_inode * inode)
 }
 
 /*
- * 将i节点信息写入设备
+ * 将i节点信息写入设备，写入缓冲区中，缓冲区刷新时会写入磁盘中
  */
 static void write_inode(struct m_inode * inode)
 {
@@ -452,19 +468,34 @@ static void write_inode(struct m_inode * inode)
 	int block;
 
 	lock_inode(inode);
+	/*
+	 * 如果该i节点没有被修改过，或者i节点对应的设备号为0，则直接退出
+	 */
 	if (!inode->i_dirt || !inode->i_dev) {
 		unlock_inode(inode);
 		return;
 	}
-	if (!(sb=get_super(inode->i_dev)))
+	if (!(sb = get_super(inode->i_dev)))
 		panic("trying to write inode without device");
+	/*
+	 * 参考read_inode或者改inode对应的逻辑块号
+	 */
 	block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks +
 		(inode->i_num-1)/INODES_PER_BLOCK;
-	if (!(bh=bread(inode->i_dev,block)))
+	/*
+	 * 从该逻辑块读数据
+	 */
+	if (!(bh = bread(inode->i_dev, block)))
 		panic("unable to read i-node block");
+	/*
+	 * 使用内存的inode数据填充将要刷磁盘的高速缓存中
+	 */
 	((struct d_inode *)bh->b_data)
 		[(inode->i_num-1)%INODES_PER_BLOCK] =
 			*(struct d_inode *)inode;
+	/*
+	 * 设置告诉缓存已修改标记，后续后刷到磁盘中
+	 */
 	bh->b_dirt=1;
 	inode->i_dirt=0;
 	brelse(bh);

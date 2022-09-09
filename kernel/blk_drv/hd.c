@@ -125,6 +125,10 @@ int sys_setup(void * BIOS)
 		hd[i*5].start_sect = 0;
 		hd[i*5].nr_sects = hd_info[i].head*
 				hd_info[i].sect*hd_info[i].cyl;
+		printk("hd[%d] start_sect %d nr_sects %d\n", 
+			i*5, 
+			hd[i*5].start_sect,
+			hd[i*5].nr_sects);
 	}
 
 	/*
@@ -199,6 +203,10 @@ int sys_setup(void * BIOS)
 		for (i=1;i<5;i++,p++) {
 			hd[i+5*drive].start_sect = p->start_sect;
 			hd[i+5*drive].nr_sects = p->nr_sects;
+			printk("   hd[%d] start_sect %d nr_sects %d\n", 
+				i+5*drive, 
+				hd[i+5*drive].start_sect,
+				hd[i+5*drive].nr_sects);
 		}
 		brelse(bh);
 	}
@@ -349,15 +357,44 @@ void do_hd_request(void)
 	unsigned int sec,head,cyl;
 	unsigned int nsect;
 
+	/*
+	 * 定义repeat标记
+	 * 检查request
+	 * 必须有request
+	 * CURRENT->dev的主设备号必须为MAJOR_NR
+	 * CURRENT->bh没有被锁
+	 * 
+	 */
 	INIT_REQUEST;
+	/*
+	 * 获取子设备号
+	 * block表示扇区
+	 */
 	dev = MINOR(CURRENT->dev);
 	block = CURRENT->sector;
+
+	/*
+	 * 判断次设备号
+	 * 判断读取扇区号是否在此分区合理范围内
+	 */
 	if (dev >= 5*NR_HD || (block+2) > (hd[dev].start_sect + hd[dev].nr_sects - 1)) {
 		end_request(0);
 		goto repeat;
 	}
+	/*
+	 * 对于此硬盘的绝对扇区号
+	 * dev/=5 此时dev表示第一个硬盘还是第二个硬盘
+	 */
 	block += hd[dev].start_sect;
 	dev /= 5;
+
+	if (CURRENT->bh->b_blocknr == 1) {
+		printk("SuperBlock sectors is %d 0x%x offset in disk\n", 
+			block, block*512);
+	}
+	/*
+	 * 下面根据dev和block获取sec，head，cyl等硬盘参数
+	 */
 	__asm__("divl %4":"=a" (block),"=d" (sec):"0" (block),"1" (0),
 		"r" (hd_info[dev].sect));
 	__asm__("divl %4":"=a" (cyl),"=d" (head):"0" (block),"1" (0),
@@ -377,8 +414,8 @@ void do_hd_request(void)
 		return;
 	}	
 	if (CURRENT->cmd == WRITE) {
-		hd_out(dev,nsect,sec,head,cyl,WIN_WRITE,&write_intr);
-		for(i=0 ; i<3000 && !(r=inb_p(HD_STATUS)&DRQ_STAT) ; i++)
+		hd_out(dev, nsect, sec, head, cyl, WIN_WRITE, &write_intr);
+		for(i = 0; i < 3000 && !(r = inb_p(HD_STATUS)&DRQ_STAT); i++)
 			/* nothing */ ;
 		if (!r) {
 			bad_rw_intr();
@@ -386,7 +423,7 @@ void do_hd_request(void)
 		}
 		port_write(HD_DATA,CURRENT->buffer,256);
 	} else if (CURRENT->cmd == READ) {
-		hd_out(dev,nsect,sec,head,cyl,WIN_READ,&read_intr);
+		hd_out(dev, nsect, sec, head, cyl, WIN_READ, &read_intr);
 	} else
 		panic("unknown hd-command");
 }

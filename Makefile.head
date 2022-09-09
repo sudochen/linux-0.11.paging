@@ -17,7 +17,7 @@ export V Q S
 # size in blocks.
 #
 
-RAMDISK_START ?= 256
+RAMDISK_START ?= 0
 RAMDISK_SIZE ?= 2048
 
 %.o: %.c
