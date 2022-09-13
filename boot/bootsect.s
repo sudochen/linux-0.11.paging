@@ -83,6 +83,7 @@
 #		0x301 - first partition on first drive etc
 # 0x301 表示硬盘的第一个分区
 # 0x21D 表示软盘的第一个分区
+# 0x21C 表�RAMDISK
 #
 	.equ ROOT_DEV, 0x301
 #	.equ ROOT_DEV, 0x21D

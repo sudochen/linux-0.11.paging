@@ -3,7 +3,6 @@
 # build.sh -- a shell version of build.c for the new bootsect.s & setup.s
 # author: falcon <wuzhangjin@gmail.com>
 # update: 2008-10-10
-set -x
 
 bootsect=$1
 setup=$2
