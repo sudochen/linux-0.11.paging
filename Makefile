@@ -12,7 +12,7 @@ LIBS	=lib/lib.a
 
 all: Image
 Image: boot/bootsect boot/setup kernel.bin FORCE
-	$(BUILD) boot/bootsect boot/setup kernel.bin Image
+	$(BUILD) boot/bootsect boot/setup kernel.bin rootfs/rootram.img Image
 	$(Q)sync
 
 init/main.o: FORCE
@@ -73,7 +73,8 @@ run: qemu
 
 QEMU_OPS_T := -nographic -serial mon:stdio -m 64M -boot a
 qemu:
-	qemu-system-i386 ${QEMU_OPS_T} -fda Image -fdb ./rootfs/rootimage-0.11 -hda ./rootfs/hdc-0.11.img 
+#	qemu-system-i386 ${QEMU_OPS_T} -fda Image -fdb ./rootfs/rootimage-0.11 -hda ./rootfs/hdc-0.11.img 
+	qemu-system-i386 ${QEMU_OPS_T} -fda Image -hda ./rootfs/hdc-0.11.img 
 
 QEMU_OPS_X := -m 64M -boot a
 qemu-x:

@@ -86,6 +86,7 @@
 #
 	.equ ROOT_DEV, 0x301
 #	.equ ROOT_DEV, 0x21D
+#	.equ ROOT_DEV, 0x21C
 #
 
 #
