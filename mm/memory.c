@@ -123,12 +123,10 @@ return __res;
 #endif
 	unsigned long j = 0;
 	unsigned long i = MAP_NR(LOW_MEMORY);
-	unsigned long flags;
 
 	/*
 	 * 我们希望获取页是一个不可打断的过程，因此禁用中断
 	 */
-	local_irq_disable(flags);
 	while(i < PAGING_PAGES) {
 		/*
 		 * 如果是保留页或者页计数不为0
@@ -151,10 +149,8 @@ return __res;
 		for (j = 0; j < 4096; j += 4) {
 			*((unsigned int *)(i + j)) = 0;
 		}
-		local_irq_restore(flags);
 		return i;
 	}
-	local_irq_restore(flags);
 	return 0;
 }
 

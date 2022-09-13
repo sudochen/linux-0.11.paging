@@ -148,6 +148,9 @@ coprocessor_error:
 	pushl $ret_from_sys_call
 	jmp math_error
 
+# 因为当前内核堆栈不不会引起内核任务切换
+# 但如果是可抢占内核，如果在任务切换时发生中断，而引发内核任务切换
+# 后果未知
 .align 4
 switch_to_by_stack:
 	pushl %ebp                      # 入栈保存ebp
@@ -169,6 +172,12 @@ switch_to_by_stack:
 	movl 8(%ebp),%ebx               # *(ebp + 8)存放的是pnext, ebp = [EIP, CS, pnext, ldt, cr]
 	cmpl %ebx,current               # 判断要切换的任务和当前任务是不是一样
 	je 1f                           # 如果一样跳转到1处
+	# 禁用中断，我个人认为下面的代码是不能中断的
+	# 在Linux0.11是不可能发生的
+	# 但是个人认为应该加上
+	pushfl							# 将eflags压入堆栈
+	popl %edx						# 将eflags保存在edx中
+	cli								# 禁用中断
 	# switch_to PCB
 	# cli
 	movl %ebx,%eax                  # pnext赋值给ebx
@@ -189,6 +198,9 @@ switch_to_by_stack:
 	# get pnext->page dir base
 	movl 16(%ebp), %ecx             # 获取CR3
 	movl %ecx,%cr3                  # 设置CR3
+	# 恢复eflags
+	pushl %edx						# edx压入堆栈中，edx保存了eflags
+	popfl							# 恢复eflags
 	# sti
 	# nonsense
 	cmpl %eax,last_task_used_math 
