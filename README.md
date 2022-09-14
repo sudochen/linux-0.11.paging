@@ -1,2 +1,5 @@
 # Linux0.11
-modify Linux0.11 use 4G virtual memory，0-3G for user space，3G-4G for kernel space
+将Linux0.11修改为4G的虚拟内存模式，0-3G用户空间，3G-4G内核空间
+可以挂载oldlinux上的文件系统
+源代码基线是在网上找的，具体已经不知道出处了
+纯粹是为了学习记录，如果有侵权请联系删除sudochen@163.com
