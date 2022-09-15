@@ -6,8 +6,8 @@
 # 编译
 进入rootfs目录，将所有的tar.bz2解压  
 执行make命令编译，默认使用内核堆栈进行任务切换，serial作为stdio等  
-make qemu，使用qemu仿真，serial重定向到当前终端的标准输入输出上  
-make help获取更多信息  
+执行make qemu使用qemu仿真，serial重定向到当前终端的标准输入输出上  
+执行make help获取更多信息  
 # 启动信息 make qemu
 ```
 qemu-system-i386 -nographic -serial mon:stdio -m 64M -boot a -fda Image -fdb ./rootfs/rootimage-0.11.img -hda ./rootfs/hdc-0.11.img 
