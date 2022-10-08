@@ -245,7 +245,7 @@ static unsigned long change_ldt(unsigned long text_size,unsigned long * page)
 	
 	/* make sure fs points to the NEW data segment */
 	/*
-	 * 回复FS为0x17
+	 * 恢复FS为0x17
 	 */
 	__asm__("pushl $0x17\n\tpop %%fs"::);
 
