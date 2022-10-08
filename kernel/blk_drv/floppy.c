@@ -30,6 +30,9 @@
  * abund.
  * 
  * 不能保证该程序能在多于一个以上的软驱系统上工作
+ * 在使用qemu进行仿真时，如果根文件系统为floppy则不能工作，但是奇怪的是bochs可以
+ * 可能就是这个原因
+ *
  */
 
 #include <linux/sched.h>
@@ -42,6 +45,8 @@
 
 /*
  * 软驱的主设备号是2
+ * 这个必须在blk.h之前定义，这样里面的一些宏才能正确的展开
+ *
  */
 #define MAJOR_NR 2
 #include "blk.h"
@@ -57,11 +62,11 @@ __asm__("outb %0,%1\n\tjmp 1f\n1:\tjmp 1f\n1:"::"a" ((char) (val)),"i" (port))
 
 /*
  * 定义用于计算软驱的类型和设备号
- * TYPE(x) 2对应1.2MB，7对应1.44MB
+ * TYPE(x) 如果是2对应1.2MB，如果是7对应1.44MB
  * DRIVE(x) 0对应3，A对应D
  */
-#define TYPE(x) ((x)>>2)
-#define DRIVE(x) ((x)&0x03)
+#define TYPE(x) 	((x)>>2)
+#define DRIVE(x) 	((x)&0x03)
 /*
  * Note that MAX_ERRORS=8 doesn't imply that we retry every bad read
  * max 8 times - some types of errors increase the errorcount by 2,

@@ -104,27 +104,49 @@ static void make_request(int major, int rw, struct buffer_head * bh)
 	struct request * req;
 	int rw_ahead;
 
-	/* WRITEA/READA is special case - it is not really needed, so if the */
-	/* buffer is locked, we just forget about it, else it's a normal read */
-	/*
-	 * rw_ahead表示rw是READA或者WRITEA
+	/* 
+	 * WRITEA/READA is special case - it is not really needed, so if the 
+	 * buffer is locked, we just forget about it, else it's a normal read
+	 *
+	 * rw_ahead表示rw是READA或者WRITEA，这个分支根据代码好像是非阻塞的读写
 	 * 对于是rw_ahead的，如果缓冲区正在使用，则直接退出
 	 * 否则就按照普通的READ, WRITE命令进行
+	 *
 	 */
 	if ((rw_ahead = (rw == READA || rw == WRITEA))) {
-		if (bh->b_lock)
+		/*
+		 * 如果buffer_head已经锁定，直接返回
+		 * 否则就按照正常的读写进行
+		 *
+		 */
+		if (bh->b_lock) {
 			return;
-		if (rw == READA)
+		}
+		/*
+		 * 按照正常的读写
+		 */
+		if (rw == READA) {
 			rw = READ;
-		else
+		} else {
 			rw = WRITE;
+		}
 	}
-	if (rw!=READ && rw!=WRITE)
+	/*
+	 * 如果既不是读也不是写，直接panic错误
+	 */
+	if (rw != READ && rw != WRITE) {
 		panic("Bad block dev command, must be R/W/RA/WA");
+	}
+
+	/*
+	 * 锁定buffer
+	 *
+	 */
 	lock_buffer(bh);
 	/*
 	 * 如果写命令的数据没有被修改过或者读命令的数据没有被更新过直接退出
 	 * 不用添加这个请求
+	 *
 	 */
 	if ((rw == WRITE && !bh->b_dirt) || (rw == READ && bh->b_uptodate)) {
 		unlock_buffer(bh);
@@ -135,9 +157,10 @@ repeat:
 	 * we want some room for reads: they take precedence. The last third
 	 * of the requests are only for reads.
 	 * 
-	 * 读操作优先，
+	 * 读操作优先，从后向前遍历
 	 * request的开始给读请求使用
 	 * 在reqeust的2/3开始给写请求使用
+	 *
 	 */
 	if (rw == READ)
 		req = request + NR_REQUEST;
@@ -150,10 +173,12 @@ repeat:
 	while (--req >= request)
 		if (req->dev < 0)
 			break;
-	/* if none found, sleep on new requests: check for rw_ahead */
-	/*
+	/* if none found, sleep on new requests: check for rw_ahead
+	 *
+	 * req < request表示没有找到
 	 * 如果没有找到一个空的请求项，如果是rw_ahead则直接退出
 	 * 否则进行睡眠并再次寻找
+	 *
 	 */
 	if (req < request) {
 		if (rw_ahead) {
@@ -163,7 +188,12 @@ repeat:
 		sleep_on(&wait_for_request);
 		goto repeat;
 	}
-	/* fill up the request-info, and add it to the queue */
+	/* fill up the request-info, and add it to the queue 
+	 *
+	 * 如果代码走到这说明已经找到了一个request
+	 * 然后填充request的信息，并将其添加到队列里
+	 *
+	 */
 	req->dev = bh->b_dev;
 	req->cmd = rw;
 	req->errors = 0;
