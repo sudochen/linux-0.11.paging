@@ -78,6 +78,14 @@ void buffer_init(long buffer_end);
 
 typedef char buffer_block[BLOCK_SIZE];
 
+/*
+ * b_dev 设备号
+ * b_blocknr 块号
+ * b_dirt 当缓冲区的数据因为修改和磁盘上的数据不同时置位，
+ *        在特定时间同步到磁盘上后清零
+ * b_lock 表示块驱动程序正在操作该缓冲块
+ * b_count 表示该缓冲块被多少个进程使用
+ */
 struct buffer_head {
 	char * b_data;					/* pointer to data block (1024 bytes) */
 	unsigned long b_blocknr;		/* block number */
