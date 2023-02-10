@@ -195,7 +195,8 @@ int sys_pause(void)
 
 /*
  * 将当前进程设置为不可中断的睡眠状态
- * 只有明确进程唤醒才可以
+ * 只能通过wake_up进行唤醒
+ *
  */
 void sleep_on(struct task_struct **p)
 {
@@ -203,31 +204,70 @@ void sleep_on(struct task_struct **p)
 
 	if (!p)
 		return;
+	/*
+	 * task[0]不允许睡眠
+	 */
 	if (current == &(init_task.task))
 		panic("task[0] trying to sleep");
+	/*
+	 *
+	 * 第一次掉用时，*p为空，表示当前进程是第一个睡眠进程
+	 * 第二次调用时，*p表示上次睡眠的进程任务指针，将上次睡眠的进程任务指针
+	 *    存放在当前进程的栈中，并使用当前进程任务指针替换*p，此时
+	 *    当前进程任务指针为睡眠进程的头部
+	 * 当唤醒时，将头部睡眠进程的状态设置为运行状态，然后判断tmp进行递归唤醒
+	 *
+	 */
 	tmp = *p;
 	*p = current;
 	current->state = TASK_UNINTERRUPTIBLE;
 	schedule();
+	/*
+	 * 进程唤醒后走到这，然后判断栈中的tmp进程指针如果有效则递归唤醒
+	 * 
+	 */
 	if (tmp)
-		tmp->state=TASK_RUNNING;
+		tmp->state = TASK_RUNNING;
 }
 
+/*
+ * 将当前进程设置为可中断的睡眠状态
+ * 通过wake_up或者信号进行唤醒
+ *
+ */
 void interruptible_sleep_on(struct task_struct **p)
 {
 	struct task_struct *tmp;
 
 	if (!p)
 		return;
+	/*
+	 * task[0]不允许睡眠
+	 */
 	if (current == &(init_task.task))
 		panic("task[0] trying to sleep");
-	tmp=*p;
-	*p=current;
+	/*
+	 * 和sleep_on函数的说明一样，但是唤醒后的处理不一样
+	 */
+	tmp = *p;
+	*p = current;
+
+	/* *p表示的永远是最后一个睡眠的进程指针，也就是睡眠进程头部
+	 *
+	 */
 repeat:	
 	current->state = TASK_INTERRUPTIBLE;
 	schedule();
+	/*
+	 * 当某个进程被唤醒时，如果这个进程不是头部，则将头部进程唤醒，
+	 * 自己继续进入睡眠状态
+	 * 在这个增加了 *p = NULL 
+	 * 
+	 *
+	 */
 	if (*p && *p != current) {
 		(*p)->state = TASK_RUNNING;
+		*p = NULL;
 		goto repeat;
 	}
 	/* Linux完全注释有如下
@@ -235,14 +275,16 @@ repeat:
 	 * 也会导致等待的进程可能没法唤醒，在嵌套的情况下
 	 * 因此修改为*p = tmp
 	 * 
-	 * 我个人认为将*p = tmp不合适，因为在后面的代码中tmp已经被唤醒
+	 * 我个人认为将*p = tmp不合适，*p已经是头部，头部唤醒后会递归进行
+	 * tmp的唤醒，如果将*p = tmp进行修改
+	 * 因为在后面的代码中tmp已经被唤醒
 	 * 当tmp被唤醒会进行递归回溯唤醒所有的进程
 	 * 设置为*p = NULL也不合适，因为当使用wake_up后设置*p为NULL
 	 * 如果这个时候别的进程刚好掉用sleep_on函数, *p是有内容的
 	 * 这样也会导致丢失，
 	 * 最好就是不管它就像sleep_on函数那样处理
 	 */
-	//*p = tmp;
+	
 	if (tmp)
 		tmp->state = TASK_RUNNING;
 }

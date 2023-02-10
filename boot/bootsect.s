@@ -83,7 +83,7 @@
 #		0x301 - first partition on first drive etc
 # 0x301 表示硬盘的第一个分区
 # 0x21D 表示软盘的第一个分区
-# 0x21C 表�RAMDISK
+# 0x21C 表示RAMDISK
 #
 	.equ ROOT_DEV, 0x301
 #	.equ ROOT_DEV, 0x21D
@@ -104,8 +104,9 @@
 # 为什么要拷贝到0x90000(576K)处,这是因为system会被拷贝到0x10000(64K)处
 # 而Linus在写这个版本的Linux的时候假设内核的大小为512K,这个可以在后面的注释里看到
 # 64K+512K就是576K
-# 那为什么system要拷贝到0x10000而不是直接拷贝到0x00000地址呢，
-# 这是因为在setup模块中需要用到BIOS掉用获取一些硬件参数，而BIOS可能占用了64K的地址
+#
+# 问题：那为什么system要拷贝到0x10000而不是直接拷贝到0x00000地址呢，
+# 这是因为在setup模块中需要用到BIOS调用获取一些硬件参数，而BIOS中断向量表和服务程序可能占用了64K的地址
 # 这就是为什么在setup的最后又将system模块拷贝到0x00000地址的原因
 #
 _start:
@@ -132,7 +133,9 @@ go:	mov	%cs, %ax					# CS = 0x9000
 #
 # 此处设置栈顶地址为0x9ff00
 # 因为bootsec占用512字节，setup占用512*4个字节，从0x90000开始存放bootsect和setup，末尾地址为0x90a00
-# 而x86的栈为FD栈，满减栈，因此从0x90a00到0x9ff00的空间都是可以用，栈顶指针初始值为0x9ff00
+# 而x86的栈为FD栈，递减满栈，因此从0x90a00到0x9feff的空间都是可以用，
+# 栈顶指针初始值为0x9ff00，下一次入栈的最近一个字节的地址为0x9feff
+# 
 #
 	mov	$0xff00, %sp				# x86 FD stack [full decrease stack]
 	                                # we will copy 4 sectors(2048) form boot device
@@ -260,7 +263,6 @@ rp_read:
 	jb ok1_read
 	ret
 ok1_read:
-	#seg cs
 	mov	%cs:sectors+0, %ax
 	sub	sread, %ax
 	mov	%ax, %cx
@@ -275,7 +277,6 @@ ok2_read:
 	call read_track
 	mov %ax, %cx
 	add sread, %ax
-	#seg cs
 	cmp %cs:sectors+0, %ax
 	jne ok3_read
 	mov $1, %ax

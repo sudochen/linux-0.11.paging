@@ -40,7 +40,7 @@ static struct task_struct * buffer_wait = NULL;
 int NR_BUFFERS = 0;
 
 /*
- * 等待bh解锁
+ * 等待bh解锁，可能发生进行切换
  */
 static inline void wait_on_buffer(struct buffer_head * bh)
 {
@@ -278,6 +278,22 @@ repeat:
 	/*
 	 * tmp指向缓冲区头部
 	 * 下面的代码意思是需要找到一个b_count为0的高速缓存
+	 * 一直对BANDNESS不理解，再次解释一下
+	 *
+	 * BANDNESS = bh->b_dirt*2 + bh->b_lock
+	 * 分析如下
+	 * 
+	 * 从free_list开始便利
+	 * 第一次的时候bh为空因此可以进入if (!bh || BADNESS(tmp) < BADNESS(bh))
+	 * 将从free_list找到的可用tmp赋值为bh
+	 * 如果此bh的lock和dirt都为0，则直接可以用这个bh，否则继续进入循环
+	 * 此时又找到一个tmp，然后利用BADNESS宏进行对比
+	 * 可以发出系统倾向于选择一个lock和dirt都为0的缓冲区，如果实在找不到
+	 * 那就选择一个lock置位的，最后如果实在找不到那就找一个lock和dirt都为1的
+	 * 如果所有的b_count都在用，则睡眠一会在重新查找
+	 * BADNESS值越小表示使用该块的系统开销越小，优先选择该块。
+	 * 是否标记dirt对BADNES的计算结果有很大影响。
+	 * 如果块既未锁定又是“干净的”，则可以使用直接退出循环
 	 */	
 	tmp = free_list;
 	do {
@@ -300,9 +316,18 @@ repeat:
 		sleep_on(&buffer_wait);
 		goto repeat;
 	}
+	/*
+	 * 根据上面的BADNESS分析，获取的缓冲区如果上锁，需求等待解锁
+	 * wait_on_buffer会引起任务切换，因此需要再次检查该缓冲区的使用情况
+	 *
+	 */
 	wait_on_buffer(bh);
 	if (bh->b_count)
 		goto repeat;
+	/*
+	 * 如果该缓冲区已经被修改，则需要和磁盘进行同步并等待该缓冲区解锁
+	 *
+	 */
 	while (bh->b_dirt) {
 		sync_dev(bh->b_dev);
 		wait_on_buffer(bh);
