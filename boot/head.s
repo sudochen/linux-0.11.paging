@@ -6,7 +6,7 @@
 .code32
 
 # 
-# 此处运行在绝对地址0x00000000处，这个页是页目录(page directory)的地址，
+# 此处运行在地址0x00000000处，这个页是页目录(page directory)的地址，
 # 启动代码运行完毕后会被页目录(page directory)覆盖
 #
 .text
@@ -39,6 +39,7 @@ startup_32:
 # } stack_start { &user_stack, 0x10}
 # lss设置了栈顶指针和其栈的段地址，0x10表示数据段，
 # 地址为stack_start定义起大小为PAGE_SIZE>>2 = 1024字节
+# 可以看到此处我们在数据段设置了esp的值
 #	
 	lss stack_start,%esp
 	call setup_idt			# 设置所有的中断描述符为ignore
@@ -93,6 +94,7 @@ check_x87:
 # sure everything is ok. This routine will be over-
 # written by the page tables.
 # setup_idt会将256个中断向量设置为ignore_int，但是此处没有加载idt
+# 使用eax作为低32位和edx高32位构造中断描述符
 #
 setup_idt:
 	lea ignore_int,%edx		# 获取ignore_int的有效地址，edx为中断门的高32位
@@ -159,10 +161,18 @@ floppy_track_buffer:
 	.fill 512*2*18,1,0
 
 after_page_tables:
-	call setup_paging		# 设置页式映射
-	lgdt gdt_descr			# 加载全局描述符
-	lidt idt_descr			# 加载中断描述符
+	call setup_paging		# 设置页式映射，此时已经启用了页式映射。
+	lgdt gdt_descr			# 重新加载全局描述符
+	lidt idt_descr			# 重新加载中断描述符
+#
+# 加载完成后内核的代码和数据基地址为0xc0000000
+#
 	ljmp $0x08,$1f			# 跳转到代码段的1处运行，也就是下面的1处，强制更改了CS
+#
+# 将内核代码运行在0xc0000000地址处
+#
+#
+#
 1:	movl $0x10,%eax			# reload all the segment registers
 	mov %ax,%ds				# after changing gdt.
 	mov %ax,%es				# relaod的目的在于刷新描述符高速缓存
@@ -171,7 +181,7 @@ after_page_tables:
 	lss stack_start,%esp	# 重新设置堆栈
 	pushl $8				# These are the parameters to main :-)
 	pushl $7
-	pushl $6
+	pushl $6				# 根据参数传递规则，start_kernel的第一个参数为6
 	cld						# gcc2 wants the direction flag cleared at all times, 递增
 	call start_kernel
 L6:
@@ -245,20 +255,21 @@ setup_paging:
 # 分页机制将线性地址分成三个部分进行查表，高10位表示页表目录，中10位表示页表项，低12位表示偏移，
 # 在寻址时，根据高10位找到页表目录，页表目录存放了页表的起始地址
 # 根据中10位在页面中找到对应的物理页，在加上低12位的偏移形成物理地址
-# +---------------------------------------+------+ 
-# | 页表目录或者页表物理地址的高位BIT(12-31) |   7  | 
-# +---------------------------------------+------+
-# 我们不用关心其低12位，低12位有其特殊的意义，具体可查询intel的数据手册，
+# +------------------------------------------+----------------+ 
+# | 页表目录或者页表的高位BIT[31:12] |  OFFSET[12:0]  | 
+# +------------------------------------------+----------------+
+# 页表目录和页表我们不用关心其低12位，低12位有其特殊的意义，具体可查询intel的数据手册，
+# 
 # 页表目录和页表以4KB对齐
 # 
 # 这20K中前4K为主页表目录，主目录中一共有1024个页表目录，每个页表目录指向一个页表，每一个页表也有1024项
 # 现在我们算一个算，一个页是4KB，一个页表都1024项，那个一个页表可以维护的内存是4M，
 # 一个页表目录项对应一个页表，也就是说一个页表目录可以维护4M的内存
 # 那么有多个页表目录项呢，答案是1024个，那么很容易知道一个页表目录维护4GB的内存
-# 由于当前系统中只用16M的内存，因此我们只需要4个目录项即可
+# 由于当前系统中只用16M的内存，因此我们只需要4个页表目录项即可
 #
 #
-	
+# Identity-map翻译为平坦映射，为了方便低4MB使用平坦映射
 # Identity-map the kernel in low 4MB memory for ease of transition
 # 下面的代码创建了如下映射
 # 虚拟地址0x00000000+4MB映射到物理地址0x00000000+4MB
@@ -283,17 +294,23 @@ setup_paging:
 #  0x00002 007
 #  0x00003 007
 #  0x00004 007
-# 一共5个页表目录   
+# 一共5个页表目录项有效   
 #
 #
 	
 	movl $pg3+4092,%edi			# 最后一个页表
 	movl $0xfff007,%eax		    # 16Mb - 4096 + 7 (r/w user,p)
 	std
+# stosl ES:EDI = EAX
+# 将EAX中的值保存到ES:EDI指向的地址中
+# 如果在次之前使用std将eflags的方向位置位则每次EDI自减4，否则自加4
+# 整型完毕后建立了16MB的页表page0,page1,page2,page3
+#
 1:	stosl			            # fill pages backwards - more efficient :-)
 	subl $0x1000,%eax
 	jge 1b
 	cld
+
 # 
 # 上面的代码执行完成后内存如下
 # 地址0x00000000 swapper_pg_dir
@@ -333,6 +350,8 @@ setup_paging:
 	orl $0x80000000,%eax
 	movl %eax,%cr0		        # set paging (PG) bit
 	ret			                # this also flushes prefetch-queue
+# 因为是平坦映射，ret还是可以返回到原地址的
+# 试想一下如果映射非平坦映射，ret应该是跑飞的
 
 #
 # The interrupt descriptor table has room for 256 idt's

@@ -2,7 +2,7 @@
 include Makefile.head
 
 LDFLAGS	+= -Ttext 0 -e startup_32
-CFLAGS	+= -Iinclude -Wall
+CFLAGS	+= -Iinclude -Wall -g
 CPP	+= -Iinclude
 
 ARCHIVES=kernel/kernel.o mm/mm.o fs/fs.o

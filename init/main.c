@@ -87,9 +87,9 @@ extern long startup_time;
  * 这些地址可以访问的原因是由于0地址和0xc0000000开始的4MB都映射到同一区域
  *
  */
-#define EXT_MEM_K (*(unsigned short *)0x90002)
-#define DRIVE_INFO (*(struct drive_info *)0x90080)
-#define ORIG_ROOT_DEV (*(unsigned short *)0x901FC)
+#define EXT_MEM_K 		(*(unsigned short *)0x90002)
+#define DRIVE_INFO 		(*(struct drive_info *)0x90080)
+#define ORIG_ROOT_DEV 	(*(unsigned short *)0x901FC)
 
 /*
  * Yeah, yeah, it's ugly, but I cannot find how to do this correctly
@@ -140,21 +140,25 @@ void start_kernel(int __a, int __b, int __c)
 	/*
 	 * Interrupts are still disabled. Do necessary setups, then
 	 * enable them
+	 */
+	/*
 	 * ORIG_ROOT_DEV是在bootsect模块中root_dev的地址的值
-	 * DRIVE_INFO是通过setup模块通过BIOS获取的参数
-	 * EXT_MEM_K是setup模块中通过BIOS掉用获取的1MB以上的扩展内存的大小
-	 * memory_end是1MB加上扩展内存，也就是内存的结束地址
-	 * memory_end & 0xffff000 可知我们要求内存4KB对齐
+	 * 也就是根文件系统的设备号
 	 */
  	ROOT_DEV = ORIG_ROOT_DEV;
+	/*
+	 * DRIVE_INFO是通过setup模块通过BIOS获取的参数
+	 */
  	drive_info = DRIVE_INFO;
+	/*
+	 * EXT_MEM_K是setup模块中通过BIOS调用获取的1MB以上的扩展内存的大小
+	 * memory_end就是1MB加上扩展内存，也就是内存的大小
+	 * memory_end & 0xffff000 可知我们要求内存4KB对齐
+	 * 如果内存大于16MB，则设置内存最大为16MB，
+	 * 
+	 */
 	memory_end = (1<<20) + (EXT_MEM_K<<10);
 	memory_end &= 0xfffff000;
-	/* 
-	 * 内存最大为16M，根据内存大小获取main_memory_start
-	 * 如果当前内存为16M，我们可知道main_memory_start为6M
-	 *
-	 */
 	if (memory_end > 16*1024*1024)
 		memory_end = 16*1024*1024;
 	/*
@@ -179,7 +183,7 @@ void start_kernel(int __a, int __b, int __c)
 	 * 内存初始化，创建mem_map数组，
 	 * 将main_memory_start到memory_end之间的内存4KB一组进行标记
 	 */
-	mem_init(main_memory_start,memory_end);
+	mem_init(main_memory_start, memory_end);
 	trap_init();
 	blk_dev_init();
 	chr_dev_init();

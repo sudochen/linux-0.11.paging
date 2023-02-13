@@ -283,17 +283,17 @@ repeat:
 	 * BANDNESS = bh->b_dirt*2 + bh->b_lock
 	 * 分析如下
 	 * 
-	 * 从free_list开始便利
+	 * 从free_list开始遍历
 	 * 第一次的时候bh为空因此可以进入if (!bh || BADNESS(tmp) < BADNESS(bh))
 	 * 将从free_list找到的可用tmp赋值为bh
 	 * 如果此bh的lock和dirt都为0，则直接可以用这个bh，否则继续进入循环
 	 * 此时又找到一个tmp，然后利用BADNESS宏进行对比
-	 * 可以发出系统倾向于选择一个lock和dirt都为0的缓冲区，如果实在找不到
+	 * 可以发现系统倾向于选择一个lock和dirt都为0的缓冲区，如果实在找不到
 	 * 那就选择一个lock置位的，最后如果实在找不到那就找一个lock和dirt都为1的
 	 * 如果所有的b_count都在用，则睡眠一会在重新查找
 	 * BADNESS值越小表示使用该块的系统开销越小，优先选择该块。
 	 * 是否标记dirt对BADNES的计算结果有很大影响。
-	 * 如果块既未锁定又是“干净的”，则可以使用直接退出循环
+	 * 如果块既“未锁定”又是“干净的”，则可以使用直接退出循环
 	 */	
 	tmp = free_list;
 	do {

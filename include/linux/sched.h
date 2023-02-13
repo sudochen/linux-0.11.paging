@@ -174,9 +174,11 @@ extern void wake_up(struct task_struct ** p);
 /* _TSS(n) 表示任务n的TSS段描述子，其地址指向一个在GDT中的TSS段，每个任务都有自己TSS段
  * _LDT(n) 表示任务n的LDT段描述子，其地址指向一个在GDT中的LDT段，每个任务都有自己LDT段
  * 如n为0
- * _TSS(0) = ((unsigned long)0 << 4) + (4 << 3)表示为二进制为0b'00110 000，其index为4
+ * _TSS(0) = ((unsigned long)0 << 4) + (4 << 3)表示为二进制为0b'00100 000，其index为4
  * _LDT(0) = ((unsigned long)0 << 4) + (5 << 3)表示为二进制为0b'00101 000，其index为5
- * 
+ * _TSS(1) = ((unsigned long)1 << 4) + (4 << 3)表示为二进制为0b'00110 000，其index为6
+ * _LDT(1) = ((unsigned long)1 << 4) + (5 << 3)表示为二进制为0b'00111 000，其index为7
+ *
  * 
  */
 #define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))
