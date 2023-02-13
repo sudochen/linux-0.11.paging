@@ -863,7 +863,6 @@ void mem_init(long start_mem, long end_mem)
 	 * 下面的语句先将mem_map设置为USED，表示所有的内存都已经使用
 	 * 然后将将start_mem到end_mem之间的mem_map设置为0，表示空闲
 	 */
-
 	HIGH_MEMORY = end_mem;
 	LOW_MEMORY = start_mem;
 	for (i=0 ; i<PAGING_PAGES ; i++) {

@@ -134,6 +134,9 @@ is_disk1:
 # 下面的代码将0x10000处的代码拷贝到0x0000处，供拷贝0x80000个字节512KB，
 # 内核长度最大不能超过512K的假定前提
 # 移动了代码后以后都不能使用BIOS中断了
+# 搬移参数如下
+# DS:SI(0x1000:0) to ES:DI(0x0000:0)
+# 每次搬移0x10000个字节，也就是0x8000个双字，也就是cx的值
 #
 	mov	$0x0000, %ax
 	cld							# 'direction'=0, movs moves forward
@@ -155,6 +158,9 @@ do_move:
 # SETUPSEG 0x9020
 # 当前数据段地址为0x9020
 # 加载GDT, IDT描述符表，为保护模式做准备
+#
+#
+#
 end_move:
 	mov	$SETUPSEG, %ax			# right, forgot this at first. didn't work :-)
 	mov	%ax, %ds				# DS = 0x9020 以为idt_48是相对DS的偏移地址，在上面的代码中该表了DS，在这个地方恢复
@@ -221,6 +227,7 @@ end_move:
 # we let the gnu-compiled 32-bit programs do that. We just jump to
 # absolute address 0x00000, in 32-bit protected mode.
 # 启用32位保护模式，寻址方式发生变化
+# 启用保护模式后虚拟地址和物理地址相等我们称之为平坦映射也就是 F(x) = x
 #
 
 	mov	$0x0001, %ax			# protected mode (PE) bit

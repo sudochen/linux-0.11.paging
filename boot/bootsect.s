@@ -167,6 +167,7 @@ ok_load_setup:
 #
 # Get disk drive parameters, specifically nr of sectors/track
 # 获取当前软盘驱动的参数放在sectors处
+# cs和ds是一样的，因此cs:sectors是可以修改为sectors+0
 #
 	mov	$0x00, %dl
 	mov	$0x0800, %ax				# AH=8 is get drive parameters
@@ -236,6 +237,9 @@ root_defined:
 # after that (everyting loaded), we jump to
 # the setup-routine loaded directly after
 # the bootblock:
+# SETUPSEG定义为0x9020
+# 此时CS为0x9020，也就是说跳转到0x90200地址运行
+# 这个地址为setup模块的起始地址
 #
 
 	ljmp $SETUPSEG, $0				# setup code
