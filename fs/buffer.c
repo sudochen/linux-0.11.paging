@@ -130,7 +130,7 @@ static inline void invalidate_buffers(int dev)
  * special.
  * 
  * 该子程序检查一个软盘是否已经被更换，如果更换了就使其高速缓存无效
- * 这个程序比较慢，我们要尽可能少用它，所以仅仅在mount和open时才掉用
+ * 这个程序比较慢，我们要尽可能少用它，所以仅仅在mount和open时才调用
  * 目前这个程序只能用于软盘
  */
 void check_disk_change(int dev)

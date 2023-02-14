@@ -250,13 +250,13 @@ void start_kernel(int __a, int __b, int __c)
 	 * 
 	 * 为什么fork和pause需要inline执行呢
 	 * 我们需要知道的是，task0没有写时复制机制，fork后的task1有写时复制机制
-	 * 假设不是内联执行，当掉用fork时会ESP为A，将CS:IP压入当前系统堆栈中也就是任务0的用户堆栈中stack_start，此时ESP为B
+	 * 假设不是内联执行，当调用fork时会ESP为A，将CS:IP压入当前系统堆栈中也就是任务0的用户堆栈中stack_start，此时ESP为B
 	 * 然后执行INT 80, 此指令会将SS ESP EFLAGS CS EIP ... 压入任务0的内核堆栈
-	 * 在系统掉用过程中会产生任务切换，因此从系统调用退出时就可能有两种情况，一种是task0，一种是task1
+	 * 在系统调用过程中会产生任务切换，因此从系统调用退出时就可能有两种情况，一种是task0，一种是task1
 	 * 怎么区分task0还是task1，INT 80返回后通过eax寄存器判断当前是task0还是task1
 	 * 如果是task1执行，fork退出时用户态ESP恢复返回到init()函数中则不会有影响
 	 * 如果是task0执行，fork退出时用户态ESP恢复返回到for(;;) pause执行，pause执行将CS:IP压入堆栈，
-	 *   和fork()系统掉用一样，pause从内核中返回时可能进入task1（fork）进程中
+	 *   和fork()系统调用一样，pause从内核中返回时可能进入task1（fork）进程中
 	 *   fork函数使用RET返回，会使用堆栈中的CS:IP恢复执行
 	 * 我们设想一下fork退出时会使用CS:IP进行恢复（能恢复吗），此时CS:IP是task0（pause）压入堆栈的返回地址
 	 * 也就是说task1执行完毕后会进入到pause中执行，系统出现问题

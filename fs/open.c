@@ -173,7 +173,7 @@ int sys_open(const char * filename, int flag, int mode)
 	 */
 	(current->filp[fd]=f)->f_count++;
 	/*
-	 * 掉用函数执行打开操作
+	 * 调用函数执行打开操作
 	 */
 	if ((i = open_namei(filename, flag, mode, &inode)) <0 ) {
 		current->filp[fd] = NULL;

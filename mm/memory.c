@@ -68,28 +68,24 @@ __asm__ __volatile__("movl %%cr3,%%eax\n\tmovl %%eax,%%cr3":::"ax")
  * 
  */
 static unsigned long HIGH_MEMORY = 0;
-static unsigned long LOW_MEMORY =0;
+static unsigned long LOW_MEMORY = 0;
 static unsigned long total_pages = 0;
 static unsigned char mem_map [ PAGING_PAGES ] = {0,};
 /* chenwg
  * 复制一页4KB的内存
  *
  */
-#if 0
-#define copy_page(from,to) \
-__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024))
-#else
 void copy_page(unsigned long from, unsigned to)
 {
+#ifdef LINUX_ORG
+	__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024));
+#else
 	unsigned int i = 0;
 	for (i = 0; i < 4096; i += 4) {
 		*(unsigned int*)(to + i) = *(unsigned int*)(from + i);
 	}
-}
 #endif
-
-
-
+}
 
 /*
  * Get physical address of first (actually last :-) free page, and mark it
@@ -102,25 +98,25 @@ void copy_page(unsigned long from, unsigned to)
  */
 unsigned long get_free_page(void)
 {
-#if 0
+#ifdef LINUX_ORG
 register unsigned long __res asm("ax");
 
-__asm__("std ; repne ; scasb\n\t"	//方向位置位
-	"jne 1f\n\t"
-	"movb $1,1(%%edi)\n\t"
-	"sall $12,%%ecx\n\t"
-	"addl %2,%%ecx\n\t"
-	"movl %%ecx,%%edx\n\t"
-	"movl $1024,%%ecx\n\t"
-	"leal 4092(%%edx),%%edi\n\t"
-	"rep ; stosl\n\t"
-	" movl %%edx,%%eax\n"
-	"1: cld"
-	:"=a" (__res)
-	:"0" (0), "i" (0), "c" (PAGING_PAGES), "D" (mem_map+PAGING_PAGES-1)
+	__asm__("std ; repne ; scasb\n\t"	//方向位置位
+		"jne 1f\n\t"
+		"movb $1,1(%%edi)\n\t"
+		"sall $12,%%ecx\n\t"
+		"addl %2,%%ecx\n\t"
+		"movl %%ecx,%%edx\n\t"
+		"movl $1024,%%ecx\n\t"
+		"leal 4092(%%edx),%%edi\n\t"
+		"rep ; stosl\n\t"
+		" movl %%edx,%%eax\n"
+		"1: cld"
+		:"=a" (__res)
+		:"0" (0), "i" (0), "c" (PAGING_PAGES), "D" (mem_map+PAGING_PAGES-1)
 	);
-return __res;
-#endif
+	return __res;
+#else
 	unsigned long j = 0;
 	unsigned long i = MAP_NR(LOW_MEMORY);
 
@@ -152,6 +148,7 @@ return __res;
 		return i;
 	}
 	return 0;
+#endif
 }
 
 /*
@@ -283,7 +280,7 @@ void clear_page_tables(struct task_struct * tsk)
  * This function frees up all page tables of a process when it exits.
  * 释放所有0GB-4GB的页表
  * 并使用swapper_pg_dir作为临时页表
- * 这个函数主要在exit中进行掉用
+ * 这个函数主要在exit中进行调用
  */
 int free_page_tables(struct task_struct * tsk)
 {
@@ -355,7 +352,7 @@ int copy_page_tables(struct task_struct * tsk)
 	new_page_dir = (unsigned long *) new_pg_dir;
 
 	/* 
-	 * 如果是第一个进程掉用了fock，则只需复制160个页，也就是640KB的空间
+	 * 如果是第一个进程调用了fock，则只需复制160个页，也就是640KB的空间
 	 * 第一个进程是手工创建出来的，
 	 * 在head.s模块中我们使用了一个页表目录共1024个页表维护4M的空间
 	 * 但其实640K就够用了

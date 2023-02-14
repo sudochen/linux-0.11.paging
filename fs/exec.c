@@ -487,7 +487,7 @@ restart_interp:
 	 * |   code   |   data   |   bss    | brk
 	 * |----------|----------|----------|
 	 * 
-	 * brk一般是malloc系统掉用的起始地址
+	 * brk一般是malloc系统调用的起始地址
 	 * 
 	 */
 	current->brk = ex.a_bss +

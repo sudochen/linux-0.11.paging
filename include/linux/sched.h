@@ -27,7 +27,7 @@
 /*
  * 定义进程状态
  * TASK_RUNNING 进程处于运行状态，可以被调度
- * TASK_ZOMBIE 僵尸进程，已经掉用了exit，但是没有被父进程wait_pid
+ * TASK_ZOMBIE 僵尸进程，已经调用了exit，但是没有被父进程wait_pid
  */
 #define TASK_RUNNING			0
 #define TASK_INTERRUPTIBLE		1
