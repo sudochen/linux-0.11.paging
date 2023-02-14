@@ -48,7 +48,7 @@ _start:
 # 0x90002	2		扩展内存数	系统从1M开始的扩展内存数值（KB），实模式下最多访问1M空间	
 
 # 获取当前光标的位置，存放在地址0x90000处，因为bootsect程序此时已经没用了，共512个字节，
-# 下面的获取参数都是通过BIOS掉用获取的
+# 下面的获取参数都是通过BIOS调用获取的
 # 
 	mov	$INITSEG, %ax	# this is done in bootsect already, but...
 	mov	%ax, %ds		# DS = 0x9000

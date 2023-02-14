@@ -154,7 +154,7 @@ coprocessor_error:
 .align 4
 switch_to_by_stack:
 	pushl %ebp                      # 入栈保存ebp
-	movl %esp,%ebp                  # 将当前的栈指针存放在ebp中，C语言函数掉用规范
+	movl %esp,%ebp                  # 将当前的栈指针存放在ebp中，C语言函数调用规范
 	pushl %edx						# 入栈保存edx
 	pushl %ecx                      # 入栈保存ecx
 	pushl %ebx                      # 入栈保存ebx
@@ -172,12 +172,7 @@ switch_to_by_stack:
 	movl 8(%ebp),%ebx               # *(ebp + 8)存放的是pnext, ebp = [EIP, CS, pnext, ldt, cr]
 	cmpl %ebx,current               # 判断要切换的任务和当前任务是不是一样
 	je 1f                           # 如果一样跳转到1处
-	# 禁用中断，我个人认为下面的代码是不能中断的
-	# 在Linux0.11是不可能发生的
-	# 但是个人认为应该加上
-	pushfl							# 将eflags压入堆栈
-	popl %edx						# 将eflags保存在edx中
-	cli								# 禁用中断
+
 	# switch_to PCB
 	# cli
 	movl %ebx,%eax                  # pnext赋值给ebx
@@ -196,12 +191,9 @@ switch_to_by_stack:
 	movl $0x17,%ecx                 # 设置fs为0x17
 	mov %cx,%fs
 	# get pnext->page dir base
-	movl 16(%ebp), %ecx             # 获取CR3
+	movl 16(%ebp), %ecx             # 获取CR3的地址
 	movl %ecx,%cr3                  # 设置CR3
-	# 恢复eflags
-	pushl %edx						# edx压入堆栈中，edx保存了eflags
-	popfl							# 恢复eflags
-	# sti
+	
 	# nonsense
 	cmpl %eax,last_task_used_math 
 	jne 1f
