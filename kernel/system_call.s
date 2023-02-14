@@ -174,7 +174,12 @@ switch_to_by_stack:
 	je 1f                           # 如果一样跳转到1处
 
 	# switch_to PCB
-	# cli
+	# 在当前的Linux0.11中，因为不涉及内核抢占，因此可以不用禁止中断
+	# 可以注释掉这句话重新编译进行测试，注释掉cli，操作系统仍然运行正常
+	# 在进程切换完成后也不用开启中断，因为会通过popfl进行中断标志恢复
+	# 如果加上cli，则进程切换不会被打断
+	#
+	cli
 	movl %ebx,%eax                  # pnext赋值给ebx
 	xchgl %eax,current              # 交换current和eax，current目前是pnext了
 	# rewrite TSS pointer
@@ -212,6 +217,7 @@ switch_to_by_stack:
 	pop %fs
 	pop %gs
 	popfl
+	# popfl根据进程切换后的进程的eflags进行中断标志及其他标识的恢复
 	popl %esi
 	popl %edi
 	popl %eax
