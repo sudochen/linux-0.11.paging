@@ -217,6 +217,7 @@ switch_to_by_stack:
 	pop %fs
 	pop %gs
 	popfl
+	#
 	# popfl根据进程切换后的进程的eflags进行中断标志及其他标识的恢复
 	popl %esi
 	popl %edi
