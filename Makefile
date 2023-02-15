@@ -75,7 +75,6 @@ QEMU_OPS_T := -nographic -serial mon:stdio -m 64M -boot a
 qemu:
 	qemu-system-i386 ${QEMU_OPS_T} -fda Image -fdb ./rootfs/rootimage-0.11.img -hda ./rootfs/hdc-0.11.img 
 
-
 QEMU_OPS_X := -m 64M -boot a
 qemu-x:
 	qemu-system-i386 ${QEMU_OPS_X} -fda Image -fdb ./rootfs/rootimage-0.11.img -hda ./rootfs/hdc-0.11.img 
