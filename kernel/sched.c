@@ -20,6 +20,14 @@
 
 #include <signal.h>
 
+/*
+ * 取信号nr在信号位图中对应的二进制，nr的编号为（1~32）
+ * 比如信号1的为 0b00001 bit0置位
+ * 很简单我们知道信号32 应给为bit31置位
+ *
+ * _BLOCKABLE 用于处理阻塞信号，SIGKILL,SIGSTOP是不可阻塞的，其他都是可以阻塞的
+ *
+ */
 #define _S(nr) (1<<((nr)-1))
 #define _BLOCKABLE (~(_S(SIGKILL) | _S(SIGSTOP)))
 
@@ -42,6 +50,7 @@ void show_stat(void)
 		if (task[i])
 			show_task(i,task[i]);
 }
+
 
 #define LATCH (1193180/HZ)
 
@@ -117,7 +126,7 @@ void schedule(void)
 
 	/* check alarm, wake up any interruptible tasks that have got a signal */
 	/* 从数组的组后开始遍历
-	 * 如果任务设置了alarm并且已经超市，设置SIGALRM信号，清除alarm
+	 * 如果任务设置了alarm并且已经超时，设置SIGALRM信号，清除alarm
 	 *
 	 */
 	for(p = &LAST_TASK ; p > &FIRST_TASK ; --p)
@@ -576,13 +585,14 @@ void sched_init(void)
 	 * pushfl指令是push flags long的缩写，意思是将标志寄存器压栈
 	 * popfl是将标志寄存器出栈
 	 * NT用于控制iret的执行具体如下
-	 * NT = 0 时，用堆栈中保存的值恢复EFlag、CS(代码段寄存器)和EIP(32位指令指针寄存器)，执行常规的中断返回操作；
+	 * NT = 0 时，用堆栈中保存的值恢复EFlag、CS和EIP（Linux使用需清零）
 	 * NT = 1 时, 通过任务转换实现中断返回。
 	 */
 	__asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
 
 	/*
 	 * 加载TSS和LDT段描述符
+	 * 参数0表示任务0
 	 *
 	 */
 	ltr(0);
@@ -595,19 +605,25 @@ void sched_init(void)
 	 * 定时器操作，知道就行
 	 * 操作系统就是根据定时器中断驱动进行任务切换
 	 */
-	outb_p(0x36,0x43);						/* binary, mode 3, LSB/MSB, ch 0 */
+	outb_p(0x36, 0x43);						/* binary, mode 3, LSB/MSB, ch 0 */
 	outb_p(LATCH & 0xff , 0x40);			/* LSB */
 	outb(LATCH >> 8 , 0x40);				/* MSB */
-	printk("Enable timer_interrupt\n");
 	/*
-	 * 安装时钟中断门
+	 * 安装时钟中断门，timer_interrrupt可以发生在用户态，也可以发生在内核态
+	 * 如果发生在用户态会do_timer并调用schedule进行任务切换
+	 * 如果发生在内核态只会进行do_timer
+	 * 需要强调的是linux0.11中所有的中断返回时都不会发生抢占
+	 *
 	 */
-	set_intr_gate(0x20,&timer_interrupt);
-	outb(inb_p(0x21)&~0x01,0x21);
+	set_intr_gate(0x20, &timer_interrupt);
+	outb(inb_p(0x21)&~0x01, 0x21);
 	/*
-	 * 安装系统调用的系统门
+	 * 安装系统调用的陷阱门
+	 * 0x80的陷阱门的DPL设置为3，意思是用户代码可以通过INT 0x80进入内核态
+	 * 在Linux系统中只使用中断门(set_intr_gate)和陷阱门
+	 *  陷阱门使用两个set_trap_gate和set_system_gate
+	 *
 	 */
-	printk("Enable system_call\n");
-	set_system_gate(0x80,&system_call);
+	set_system_gate(0x80, &system_call);
 }
 
