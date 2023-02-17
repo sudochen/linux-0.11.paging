@@ -150,11 +150,17 @@ static struct super_block * read_super(int dev)
 	s->s_time = 0;
 	s->s_rd_only = 0;
 	s->s_dirt = 0;
+
+	/*
+	 * 下面的代码会从根文件系统读出超级块信息填充到s
+	 */
 	lock_super(s);
-	printk("%s bread dev is 0x%x\n", __func__, dev);
+	
+	printk("[%s] bread dev is 0x%x\n", __func__, dev);
 	/*
 	 * bread从设备上读取第一个块，
 	 * 第0个块成为引导块，保留使用
+	 * 第1个块是超级块，也就是bread的第二个参数
 	 * 
 	 */
 	if (!(bh = bread(dev, 1))) {
@@ -170,6 +176,8 @@ static struct super_block * read_super(int dev)
 	brelse(bh);
 	/*
 	 * 判断超级块的magic number是否为0x13f7
+	 * 表示是否为MINIX文件系统，
+	 * 后来mkfs.minix修改为0x13f8
 	 */
 	if (s->s_magic != SUPER_MAGIC) {
 		s->s_dev = 0;
@@ -217,6 +225,8 @@ static struct super_block * read_super(int dev)
 	/*
 	 * i节点位图和逻辑块位图的0位图都不可能为0
 	 * 因为很多相关函数中，0意味着失败
+	 * 对于申请空闲i节点或者空闲数据块的函数来讲，返回0表示失败
+	 * 因此对于imap和zmap都将bit0设置为1，以防止分配0号节点
 	 */
 	s->s_imap[0]->b_data[0] |= 1;
 	s->s_zmap[0]->b_data[0] |= 1;
@@ -386,6 +396,7 @@ void mount_root(void)
 	printk("%s %d/%d free blocks\n\r", __func__, free, p->s_nzones);
 	/*
 	 * 重置free，计算inode
+	 * s_ninodes为什么要加1???不明白，书上说是要把0节点统计进去
 	 */
 	free=0;
 	i = p->s_ninodes + 1;
