@@ -91,6 +91,10 @@ void sync_inodes(void)
  * 文件数据映射到盘块的处理操作
  * 如果create为置位，则对应逻辑快不存在应该申请新的逻辑快
  * 返回根据block数据块对应在设备上的逻辑块号
+ * inode 文件的i节点
+ * block 文件的block数据块号
+ * create 是否进行创建
+ * 
  */
 static int _bmap(struct m_inode * inode, int block, int create)
 {
@@ -199,6 +203,10 @@ static int _bmap(struct m_inode * inode, int block, int create)
 
 /*
  * 根据i节点信息获取文件数据块block在设备上对应的逻辑块
+ * inode文件的i节点
+ * block文件中数据块号
+ * 返回设备上的逻辑块号
+ *
  */
 int bmap(struct m_inode * inode, int block)
 {
@@ -272,18 +280,23 @@ struct m_inode * get_empty_inode(void)
 	do {
 		inode = NULL;
 		/*
-		 * 从最后一项开始
+		 * NR_INODE是系统定义的inode的最大数
+		 * 也是寻找inode的循环计数
+		 *
 		 */
 		for (i = NR_INODE; i; i--) {
 			/*
 			 * 如果last_inode已经指向i节点表的最后一项
 			 * 则让其重新指向i节点的开始处
+			 * 也就是inode_table
+			 *
 			 */
 			if (++last_inode >= inode_table + NR_INODE)
 				last_inode = inode_table;
 			/*
 			 * i_count为0表示可能是空闲项
 			 * 如果i节点的已修改和锁定标志均为0，则退出
+			 *
 			 */
 			if (!last_inode->i_count) {
 				inode = last_inode;
@@ -293,6 +306,8 @@ struct m_inode * get_empty_inode(void)
 		}
 		/*
 		 * 如果没有找到i节点，打印调试信息，然后系统panic
+		 *  
+		 *
 		 */
 		if (!inode) {
 			for (i=0 ; i<NR_INODE ; i++)
@@ -302,6 +317,8 @@ struct m_inode * get_empty_inode(void)
 		}
 		/*
 		 * 等待i节点
+		 *
+		 *
 		 */
 		wait_on_inode(inode);
 		while (inode->i_dirt) {
@@ -311,8 +328,10 @@ struct m_inode * get_empty_inode(void)
 	} while (inode->i_count);
 	/*
 	 * 将i节点的数据清零，并设置计数
+	 *
+	 *
 	 */
-	memset(inode,0,sizeof(*inode));
+	memset(inode, 0, sizeof(*inode));
 	inode->i_count = 1;
 	return inode;
 }
@@ -335,6 +354,7 @@ struct m_inode * get_pipe_inode(void)
 
 /*
  * dev表示设备，nr表示i节点号
+ * ROOT_INO定义为1
  */
 struct m_inode * iget(int dev, int nr)
 {
@@ -343,12 +363,15 @@ struct m_inode * iget(int dev, int nr)
 	if (!dev)
 		panic("iget with dev==0");
 	/*
-	 * 从inodetabale中获取一个空的inode
+	 * 从inode_tabale中获取一个空的inode
+	 *
 	 */
 	empty = get_empty_inode();
 	inode = inode_table;
 	/*
 	 * 扫描inode_table找到i节点的dev和nr为特定值的i节点
+	 *
+	 *
 	 */
 	while (inode < NR_INODE + inode_table) {
 		/*
@@ -437,19 +460,27 @@ static void read_inode(struct m_inode * inode)
 		panic("trying to read inode without dev");
 	/*
 	 * 该i节点所在的逻辑块号
+	 * inode->i_num 表示inode的编号
+	 *
 	 * 启动块+超级块+imap_blocks+zmap_blocks
 	 * (inode->i_num-1)/INODES_PER_BLOCK表示一个块中存放多个inode
-	 * 这个意思是这个indo在第几个块中
+	 * 这个意思是这个需要读取的inode在第几个块中
+	 *
+	 * inode->i_num-1是因为0号inode是保留的吗
 	 */
 	block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks +
 		(inode->i_num-1)/INODES_PER_BLOCK;
 	/*
 	 * 从逻辑块block读取一块数据，返回值为高速缓存结构体
+	 *
+	 *
 	 */
 	if (!(bh = bread(inode->i_dev, block)))
 		panic("unable to read i-node block");
 	/*
 	 * 使用磁盘的i节点信息填充inode结构体
+	 * (inode->i_num-1)%INODES_PER_BLOCK 表示此inode在block中的偏移
+	 *
 	 */
 	*(struct d_inode *)inode =
 		((struct d_inode *)bh->b_data)
