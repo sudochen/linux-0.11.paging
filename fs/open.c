@@ -142,38 +142,49 @@ int sys_open(const char * filename, int flag, int mode)
 	int i,fd;
 
 	/*
-	 * 文件模式
+	 * 将用户打开文件传的模式与当前进程的umask的屏蔽码进行与操作
+	 * 比如当前umask设置为002
+	 * 表示普通用户不可以写
 	 */
 	mode &= 0777 & ~current->umask;
+	
 	/*
-	 * 遍历current的filp[20], 找到一个空闲项
-	 * 一个进程最多打开20个文件
+	 * 遍历urrent的filp[20]，20表示一个进程最多打开20个文件
+	 * 如果不能找到一个空闲的filp，返回错误
 	 */
 	for(fd = 0; fd < NR_OPEN; fd++)
 		if (!current->filp[fd])
 			break;
 	if (fd >= NR_OPEN)
 		return -EINVAL;
-	/*
-	 * 设置close_on_exec标记
-	 */
 	current->close_on_exec &= ~(1<<fd);
 	/*
 	 * 在file_table找一个空闲项
+	 * file_table是一个全局变量
+	 * NR_FILE表示系统最大打开文件的数量，定义为64
+	 * 如果不能找到空闲项，返回错误
+	 * 
 	 */
 	f = 0 + file_table;
 	for (i=0; i < NR_FILE; i++, f++)
 		if (!f->f_count) 
 			break;
-	if (i >= NR_FILE)
+	if (i >= NR_FILE) {
 		return -EINVAL;
+	}
+
 
 	/*
 	 * 当前进程的filp和fd对应的file_table，并且增加计数
 	 */
 	(current->filp[fd]=f)->f_count++;
 	/*
-	 * 调用函数执行打开操作
+	 * 调用函数执行打开操作，如果返回值小于0，表示出错
+	 * 出错需清除filp
+	 * 这个函数调用完成后inode是文件inode节点信息
+	 * 如filename = /usr/sbin/test
+	 * 那么inode的是/usr/sbin/test的inode
+	 *
 	 */
 	if ((i = open_namei(filename, flag, mode, &inode)) <0 ) {
 		current->filp[fd] = NULL;
@@ -181,6 +192,10 @@ int sys_open(const char * filename, int flag, int mode)
 		return i;
 	}
 	/* ttys are somewhat special (ttyxx major==4, tty major==5) */
+	/*
+	 * S_ISCHAR表示文件是不是字符设备文件
+	 *
+	 */
 	if (S_ISCHR(inode->i_mode)) {
 		if (MAJOR(inode->i_zone[0])==4) {
 			if (current->leader && current->tty<0) {
@@ -196,13 +211,22 @@ int sys_open(const char * filename, int flag, int mode)
 			}
 	}
 	/* Likewise with block-devices: check for floppy_change */
+	/*
+	 * 是否是块设备文件
+	 *
+	 */
 	if (S_ISBLK(inode->i_mode))
 		check_disk_change(inode->i_zone[0]);
+	/*
+	 * 填充文件指针结构数据
+	 *
+	 */
 	f->f_mode = inode->i_mode;
 	f->f_flags = flag;
 	f->f_count = 1;
 	f->f_inode = inode;
 	f->f_pos = 0;
+
 	return (fd);
 }
 

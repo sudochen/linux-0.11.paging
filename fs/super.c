@@ -346,7 +346,8 @@ void mount_root(void)
 
 	/*
 	 * 从根文件系统上读取超级块，如果失败则panic 
-	 * p是super_block超级块
+	 * p是super_block超级块指针
+	 *
 	 */
 	if (!(p = read_super(ROOT_DEV)))
 		panic("Unable to mount root");
@@ -373,12 +374,20 @@ void mount_root(void)
 	 * 引用+1
 	 */
 	current->root = mi;
+	
+
+	struct buffer_head * bh;
+	if (!(bh = bread(ROOT_DEV, p->s_firstdatazone))) {
+		printk("read block error\n");
+	}
+	printk("CCCCCCCCCCCC %d %d %d %d\n", bh->b_data[0],bh->b_data[1],bh->b_data[2],bh->b_data[3]);
+
 	free=0;
 	/*
 	 * 统计该设备上的空闲块数，先让i等于该设备总的逻辑块数
-	 * s_nzones表示总逻辑块数
+	 * s_nzones表示总逻辑块数包含了load，超级块等
 	 * s_zmap逻辑块位图缓冲块指针数组，8个块
-	 * s_ninodes表示节点数
+	 * s_ninodes表示节点数从1开始计数
 	 * s_imap节点位图缓冲块指针数组，8个块
 	 * 为什么是8191呢？
 	 * 因为一个高速缓冲区是1024个字节，共8192位
@@ -388,6 +397,8 @@ void mount_root(void)
 	 * minix文件系统一共可管理8192*8*1K = 64M
 	 * minix文件系统最大64M
 	 * inode代表一个文件或者文件夹
+	 *
+	 *
 	 */
 	i = p->s_nzones;
 	while (--i >= 0)
@@ -396,7 +407,9 @@ void mount_root(void)
 	printk("%s %d/%d free blocks\n\r", __func__, free, p->s_nzones);
 	/*
 	 * 重置free，计算inode
-	 * s_ninodes为什么要加1???不明白，书上说是要把0节点统计进去
+	 * p->s_ninodes是从1开始计数的
+	 * 虽然bit0没有对应的inode结构，但还是统计上
+	 * 
 	 */
 	free=0;
 	i = p->s_ninodes + 1;
@@ -406,3 +419,4 @@ void mount_root(void)
 	printk("%s %d/%d free inodes\n\r", __func__, free, p->s_ninodes);
 	printk("%s %d is firstdatazone\n\r", __func__, p->s_firstdatazone);
 }
+

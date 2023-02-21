@@ -303,7 +303,7 @@ void init(void)
 	int pid, i;
 
 	setup((void *) &drive_info);
-	(void) open(ttydev,O_RDWR,0);
+	(void) open(ttydev, O_RDWR, 0);
 	(void) dup(0);
 	(void) dup(0);
 	printf("%d buffers = %d bytes buffer space\n\r",NR_BUFFERS,

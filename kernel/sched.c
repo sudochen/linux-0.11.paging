@@ -35,7 +35,8 @@ void show_task(int nr,struct task_struct * p)
 {
 	int i,j = 4096-sizeof(struct task_struct);
 
-	printk("%d: pid=%d, state=%d, ",nr,p->pid,p->state);
+	printk("\n\r");
+	printk("%d: pid=%d, state=%d\n",nr,p->pid,p->state);
 	i=0;
 	while (i<j && !((char *)(p+1))[i])
 		i++;
