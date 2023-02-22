@@ -150,11 +150,17 @@ static struct super_block * read_super(int dev)
 	s->s_time = 0;
 	s->s_rd_only = 0;
 	s->s_dirt = 0;
+
+	/*
+	 * 下面的代码会从根文件系统读出超级块信息填充到s
+	 */
 	lock_super(s);
-	printk("%s bread dev is 0x%x\n", __func__, dev);
+	
+	printk("[%s] bread dev is 0x%x\n", __func__, dev);
 	/*
 	 * bread从设备上读取第一个块，
 	 * 第0个块成为引导块，保留使用
+	 * 第1个块是超级块，也就是bread的第二个参数
 	 * 
 	 */
 	if (!(bh = bread(dev, 1))) {
@@ -170,6 +176,8 @@ static struct super_block * read_super(int dev)
 	brelse(bh);
 	/*
 	 * 判断超级块的magic number是否为0x13f7
+	 * 表示是否为MINIX文件系统，
+	 * 后来mkfs.minix修改为0x13f8
 	 */
 	if (s->s_magic != SUPER_MAGIC) {
 		s->s_dev = 0;
@@ -217,6 +225,8 @@ static struct super_block * read_super(int dev)
 	/*
 	 * i节点位图和逻辑块位图的0位图都不可能为0
 	 * 因为很多相关函数中，0意味着失败
+	 * 对于申请空闲i节点或者空闲数据块的函数来讲，返回0表示失败
+	 * 因此对于imap和zmap都将bit0设置为1，以防止分配0号节点
 	 */
 	s->s_imap[0]->b_data[0] |= 1;
 	s->s_zmap[0]->b_data[0] |= 1;
@@ -304,6 +314,7 @@ void mount_root(void)
 	int i,free;
 	struct super_block * p;
 	struct m_inode * mi;
+	struct buffer_head * bh;
 
 	/*
 	 * 磁盘上的i节点必须为32个字节
@@ -336,7 +347,8 @@ void mount_root(void)
 
 	/*
 	 * 从根文件系统上读取超级块，如果失败则panic 
-	 * p是super_block超级块
+	 * p是super_block超级块指针
+	 *
 	 */
 	if (!(p = read_super(ROOT_DEV)))
 		panic("Unable to mount root");
@@ -363,12 +375,23 @@ void mount_root(void)
 	 * 引用+1
 	 */
 	current->root = mi;
+	
+
+	if (!(bh = bread(ROOT_DEV, p->s_firstdatazone))) {
+		printk("read block error\n");
+	}
+	printk("bread ROOT_DEV %x first data block %d data %d %d %d %d\n", 
+		ROOT_DEV, p->s_firstdatazone,
+		bh->b_data[0],bh->b_data[1],
+		bh->b_data[2],bh->b_data[3]);
+	brelse(bh);
+
 	free=0;
 	/*
 	 * 统计该设备上的空闲块数，先让i等于该设备总的逻辑块数
-	 * s_nzones表示总逻辑块数
+	 * s_nzones表示总逻辑块数包含了load，超级块等
 	 * s_zmap逻辑块位图缓冲块指针数组，8个块
-	 * s_ninodes表示节点数
+	 * s_ninodes表示节点数从1开始计数
 	 * s_imap节点位图缓冲块指针数组，8个块
 	 * 为什么是8191呢？
 	 * 因为一个高速缓冲区是1024个字节，共8192位
@@ -378,6 +401,8 @@ void mount_root(void)
 	 * minix文件系统一共可管理8192*8*1K = 64M
 	 * minix文件系统最大64M
 	 * inode代表一个文件或者文件夹
+	 *
+	 *
 	 */
 	i = p->s_nzones;
 	while (--i >= 0)
@@ -386,6 +411,9 @@ void mount_root(void)
 	printk("%s %d/%d free blocks\n\r", __func__, free, p->s_nzones);
 	/*
 	 * 重置free，计算inode
+	 * p->s_ninodes是从1开始计数的
+	 * 虽然bit0没有对应的inode结构，但还是统计上
+	 * 
 	 */
 	free=0;
 	i = p->s_ninodes + 1;
@@ -395,3 +423,4 @@ void mount_root(void)
 	printk("%s %d/%d free inodes\n\r", __func__, free, p->s_ninodes);
 	printk("%s %d is firstdatazone\n\r", __func__, p->s_firstdatazone);
 }
+

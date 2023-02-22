@@ -47,8 +47,8 @@ static void recal_intr(void);
  * recalibrate 重新校正标志，将磁头移动到0
  * reset 复位标志，将复位硬盘控制器
  */
-static int recalibrate = 0;
-static int reset = 0;
+static int recalibrate = 1;
+static int reset = 1;
 
 /*
  * This struct defines the HD's and their types.
@@ -217,6 +217,15 @@ int sys_setup(void * BIOS)
 	return (0);
 }
 
+#ifdef LINUX_ORG
+static int controller_ready(void)
+{
+	int retries=100000;
+
+	while (--retries && (inb_p(HD_STATUS)&0xc0)!=0x40);
+	return (retries);
+}
+#else
 static int controller_ready(void)
 {
 	int retries=100000;
@@ -224,6 +233,9 @@ static int controller_ready(void)
 	while (--retries && (inb_p(HD_STATUS)&0x80));
 	return (retries);
 }
+
+#endif
+
 
 static int win_result(void)
 {

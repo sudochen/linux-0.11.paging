@@ -1,7 +1,7 @@
 /*
- *  linux/fs/namei.c
+ * linux/fs/namei.c
  *
- *  (C) 1991  Linus Torvalds
+ * (C) 1991  Linus Torvalds
  */
 
 /*
@@ -31,7 +31,7 @@
 #define MAY_READ 	4
 
 /*
- *	permission()
+ * permission()
  *
  * is used to check for read/write/execute permissions on a file.
  * I don't know if we should look at just the euid or both euid and
@@ -78,7 +78,7 @@ static int match(int len,const char * name,struct dir_entry * de)
 }
 
 /*
- *	find_entry()
+ * find_entry()
  *
  * finds an entry in the specified directory with the wanted name. It
  * returns the cache buffer in which the entry was found, and the entry
@@ -87,8 +87,14 @@ static int match(int len,const char * name,struct dir_entry * de)
  *
  * This also takes care of the few special cases due to '..'-traversal
  * over a pseudo-root and a mount point.
+ *
  * 在指定的目录中寻找一个name目录，
  * 返回一个含有找到目录项的高速缓冲区以及目录项本身(res_dir)
+ * dir 指定目录的inode
+ * name 文件名
+ * namelen 文件名长度
+ * dir_entry 找到的目录结构
+ *
  */
 static struct buffer_head * find_entry(struct m_inode ** dir,
 	const char * name, int namelen, struct dir_entry ** res_dir)
@@ -108,8 +114,12 @@ static struct buffer_head * find_entry(struct m_inode ** dir,
 #endif
 	/*
 	 * 计算该目录下的目录数量entries
+	 * i_size表示文件长度
+	 * 如果文件是目录文件，则一个目录按照dir_entry进行存放
+	 * 因此entries就是目录的个数
 	 */
 	entries = (*dir)->i_size / (sizeof (struct dir_entry));
+
 	/*
 	 * 清除返回目录项结构指针
 	 */
@@ -119,17 +129,21 @@ static struct buffer_head * find_entry(struct m_inode ** dir,
 	/* check for '..', as we might have to do some "magic" for it */
 	/*
 	 * 如果是..表示上一级目录，上一级目录是是
+	 * 对上一级目录进行判断
 	 */
 	if (namelen == 2 && get_fs_byte(name) == '.' && get_fs_byte(name+1) == '.') {
 		/* '..' in a pseudo-root results in a faked '.' (just change namelen) */
 		/*
-		 * 如果当前目录是根目录，则将将目录设置为'.'
-		 * 也就是设置长度即可
+		 * 如果当前目录已经是根目录，则将将目录设置为'.'
+		 * 也就是只设置长度就可以满足
+		 * 
 		 */
 		if ((*dir) == current->root)
 			namelen = 1;
 		/*
 		 * 如果当前目录是文件系统的根节点，则需要取超级块
+		 * 
+		 *
 		 */
 		else if ((*dir)->i_num == ROOT_INO) {
 		/* '..' over a mount-point results in 'dir' being exchanged for the mounted
@@ -137,6 +151,9 @@ static struct buffer_head * find_entry(struct m_inode ** dir,
 			/*
 			 * 取超级块，并设置dir为挂载的目录
 			 * 目录引用计数加1
+			 * 如果当前dir的是根节点，或者超级块挂载的inode
+			 * 并重置dir为超级块挂在的inode
+			 *
 			 */
 			sb = get_super((*dir)->i_dev);
 			if (sb->s_imount) {
@@ -147,20 +164,35 @@ static struct buffer_head * find_entry(struct m_inode ** dir,
 		}
 	}
 	/*
-	 * 读取一个块的数据
+	 * 如果该inode所指向的第一个直接磁盘块号为0，则错误
 	 */
-	if (!(block = (*dir)->i_zone[0]))
+	if (!(block = (*dir)->i_zone[0])) {
 		return NULL;
-	if (!(bh = bread((*dir)->i_dev, block)))
+	}
+	/*
+	 * 读取该block的数据
+	 */
+	if (!(bh = bread((*dir)->i_dev, block))) {
 		return NULL;
+	}
+	/*
+	 * 开始搜索pathname
+	 *
+	 */
 	i = 0;
 	de = (struct dir_entry *) bh->b_data;
+
 	while (i < entries) {
 		if ((char *)de >= BLOCK_SIZE + bh->b_data) {
 			brelse(bh);
 			bh = NULL;
 			/*
+			 * 进入这个分支说明已经读完一个BLOCK_SIZE了
+			 * 读完一个block还没有找到，继续读下一个block
 			 * bmap函数会返回实际的逻辑块号，参数是i节点和相对i节点的块号偏移量
+			 * bmap第一个参数是inode信息
+			 * 第二个参数是文件中的block
+			 *
 			 * 
 			 */
 			if (!(block = bmap(*dir, i/DIR_ENTRIES_PER_BLOCK)) ||
@@ -182,7 +214,7 @@ static struct buffer_head * find_entry(struct m_inode ** dir,
 }
 
 /*
- *	add_entry()
+ * add_entry()
  *
  * adds a file entry to the specified directory, using the same
  * semantics as find_entry(). It returns NULL if it failed.
@@ -253,12 +285,14 @@ static struct buffer_head * add_entry(struct m_inode * dir,
 }
 
 /*
- *	get_dir()
+ * get_dir()
  *
  * Getdir traverses the pathname until it hits the topmost directory.
  * It returns NULL on failure.
+ *
  * 根据给出的路径名进行搜索，直到达到最顶端的目录
  * 如果失败返回NULL
+ *
  */
 static struct m_inode * get_dir(const char * pathname)
 {
@@ -284,11 +318,7 @@ static struct m_inode * get_dir(const char * pathname)
 	 * 如果第一个字符为'/'说明是绝对地址，则从当前进程的根目录开始操作
 	 * 否则从当前进程的工作目录开始操作
 	 * 否则错误
-	 * pathname is /usr/bin/src
-	 * 或者 bin/src
-	 * 前者将inode设置为当前进程的根目录
-	 * 后者将indde设置为当前进程工作目录
-	 * pathname++是为了去除前面的'/'
+	 *
 	 */
 	if ((c = get_fs_byte(pathname)) == '/') {
 		inode = current->root;
@@ -303,34 +333,44 @@ static struct m_inode * get_dir(const char * pathname)
 	inode->i_count++;
 	while (1) {
 		/*
-		 * thisname /usr/bin/src
-		 * 或者 bin/src
-		 * 第二次变成
-		 * bin/src
-		 * 或者src
+		 * 第一次
+		 * thisname = pathname = /usr/sbin/test
+		 * 第二次
+		 * thisname = pathname = /sbin/test
+		 * 第三次
+		 * thisname = pathname = /test
+		 *
 		 */
 		thisname = pathname;
 		/*
 		 * 如果该节点不是目录，并且没有权限直接返回NULL
+		 * 可以看出目录必须有可执行权限
+		 *
 		 */
-		if (!S_ISDIR(inode->i_mode) || !permission(inode,MAY_EXEC)) {
+		if (!S_ISDIR(inode->i_mode) || !permission(inode, MAY_EXEC)) {;
 			iput(inode);
 			return NULL;
 		}
 		/*
 		 * 遍历pathname如果，直到c为0或者c为'/'
-		 * pathname usr/bin/src 或者 bin/src
 		 */
 		for(namelen = 0; (c = get_fs_byte(pathname++)) && (c != '/'); namelen++)
-			/* nothing */ ;
+		/* nothing */ ;
 		/*
-		 * 如果c为0，表示已经到达指定目录
+		 * 如果c为0，表示已经到了指定目录，返回inode信息
+		 *
 		 */
 		if (!c)
 			return inode;
 		/*
 		 * 调用查找制定目录和文件名的函数
+		 * 在当前目录中查找目录或者文件
+		 * 如
+		 * thisname = /usr/sbin/test
+		 * namelen的长度为strlen("usr")
+		 *
 		 */
+	
 		if (!(bh = find_entry(&inode, thisname, namelen, &de))) {
 			iput(inode);
 			return NULL;
@@ -339,8 +379,9 @@ static struct m_inode * get_dir(const char * pathname)
 		idev = inode->i_dev;
 		brelse(bh);
 		iput(inode);
-		if (!(inode = iget(idev, inr)))
+		if (!(inode = iget(idev, inr))) {
 			return NULL;
+		}
 	}
 }
 
@@ -360,11 +401,12 @@ static struct m_inode * dir_namei(const char * pathname,
 	struct m_inode * dir;
 	/*
 	 * 根据pathname找到最终的目录，例如
-	 * /usr/src/linux
+	 * /usr/sbintest
 	 * 最终找到/usr/src这个inode
 	 */
-	if (!(dir = get_dir(pathname)))
+	if (!(dir = get_dir(pathname))) {
 		return NULL;
+	}
 	/*
 	 * 根据pathname或者basename
 	 */
@@ -414,9 +456,16 @@ struct m_inode * namei(const char * pathname)
 }
 
 /*
- *	open_namei()
+ * open_namei()
  *
  * namei for open - this is in fact almost the whole open-routine.
+ *
+ * pathname 文件名
+ * flag 文件打开标志
+ * mode 文件访问的属性
+ * res_inmode pathname 文件的inode信息
+ * 如果打开成功 res_inode 表示文件inode信息，失败返回小于0
+ *
  */
 int open_namei(const char * pathname, int flag, int mode,
 	struct m_inode ** res_inode)
@@ -427,12 +476,31 @@ int open_namei(const char * pathname, int flag, int mode,
 	struct buffer_head * bh;
 	struct dir_entry * de;
 
+	/*
+	 * 文件标志修订，暂时不用分析
+	 *
+	 */
 	if ((flag & O_TRUNC) && !(flag & O_ACCMODE))
 		flag |= O_WRONLY;
 	mode &= 0777 & ~current->umask;
 	mode |= I_REGULAR;
+
+	/*
+	 * 找到文件所在文件夹的inode
+	 * pathname 如果是/usr/sbin/test
+	 * namelen 为strlen("test")
+	 * basename 为test
+	 * dir 表示test所在文件夹的inode
+	 *
+	 */
 	if (!(dir = dir_namei(pathname, &namelen, &basename)))
 		return -ENOENT;
+
+	/* 
+	 * 如果namelen为0，表示打开一个目录
+	 * 如果是打开目录，政治界返回目录的inode
+	 *
+	 */
 	if (!namelen) {			/* special case: '/usr/' etc */
 		if (!(flag & (O_ACCMODE|O_CREAT|O_TRUNC))) {
 			*res_inode = dir;
