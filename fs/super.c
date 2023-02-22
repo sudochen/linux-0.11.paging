@@ -314,6 +314,7 @@ void mount_root(void)
 	int i,free;
 	struct super_block * p;
 	struct m_inode * mi;
+	struct buffer_head * bh;
 
 	/*
 	 * 磁盘上的i节点必须为32个字节
@@ -376,11 +377,14 @@ void mount_root(void)
 	current->root = mi;
 	
 
-	struct buffer_head * bh;
 	if (!(bh = bread(ROOT_DEV, p->s_firstdatazone))) {
 		printk("read block error\n");
 	}
-	printk("CCCCCCCCCCCC %d %d %d %d\n", bh->b_data[0],bh->b_data[1],bh->b_data[2],bh->b_data[3]);
+	printk("bread ROOT_DEV %x first data block %d data %d %d %d %d\n", 
+		ROOT_DEV, p->s_firstdatazone,
+		bh->b_data[0],bh->b_data[1],
+		bh->b_data[2],bh->b_data[3]);
+	brelse(bh);
 
 	free=0;
 	/*
