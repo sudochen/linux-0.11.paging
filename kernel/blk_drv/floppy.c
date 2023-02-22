@@ -156,6 +156,9 @@ void floppy_deselect(unsigned int nr)
  * here, sleep etc. Note that floppy-on tries to set current_DOR to point
  * to the desired drive, but it will probably not survive the sleep if
  * several floppies are used at the same time: thus the loop.
+ *
+ * 检查指定软驱中软盘更换情况，如果更换了返回1
+ *
  */
 int floppy_change(unsigned int nr)
 {

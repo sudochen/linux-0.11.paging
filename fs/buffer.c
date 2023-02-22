@@ -27,7 +27,9 @@
 #include <asm/io.h>
 
 /*
- * end由链接程序生成，表示内核最后面的地址
+ * end由链接程序生成，表示内核最后面的地址，是一个NOTYPE类型的符号
+ * &end表示end的地址，也就是内核镜像的最后地址
+ *
  */
 extern int end;
 extern void put_super(int);
@@ -59,6 +61,7 @@ int sys_sync(void)
 	struct buffer_head * bh;
 
 	sync_inodes();		/* write out inodes into buffers */
+	
 	bh = start_buffer;
 	for (i=0 ; i<NR_BUFFERS ; i++,bh++) {
 		wait_on_buffer(bh);
@@ -142,12 +145,13 @@ void check_disk_change(int dev)
 	 */
 	if (MAJOR(dev) != 2)
 		return;
+
 	/*
 	 * 如果软盘已经被更换判断
 	 */
 	if (!floppy_change(dev & 0x03))
 		return;
-
+	
 	for (i=0 ; i<NR_SUPER ; i++)
 		if (super_block[i].s_dev == dev)
 			put_super(super_block[i].s_dev);
@@ -155,11 +159,14 @@ void check_disk_change(int dev)
 	invalidate_buffers(dev);
 }
 
-#define _hashfn(dev,block) (((unsigned)(dev^block))%NR_HASH)
-#define hash(dev,block) hash_table[_hashfn(dev,block)]
+#define _hashfn(dev,block) 	(((unsigned)(dev^block))%NR_HASH)
+#define hash(dev,block) 	hash_table[_hashfn(dev,block)]
 
 /*
- * 从hash表项中移除bh
+ * 从hash表项中移除bh，在getblk中调用
+ * 通过函数分析，可以分析发现bh移除后free_list会移动到下一个
+ * 原因应该此bh可能被使用，当下一次调用getblk时可以直接获取一个没有用到的bh
+ * 提高性能
  */
 static inline void remove_from_queues(struct buffer_head * bh)
 {
@@ -168,6 +175,9 @@ static inline void remove_from_queues(struct buffer_head * bh)
 		bh->b_next->b_prev = bh->b_prev;
 	if (bh->b_prev)
 		bh->b_prev->b_next = bh->b_next;
+	/*
+	 * 如果移除的bh是hash表的头部，则将hash_table头部设置为bh的下一个
+	 */
 	if (hash(bh->b_dev,bh->b_blocknr) == bh)
 		hash(bh->b_dev,bh->b_blocknr) = bh->b_next;
 	/* remove from free list */
@@ -175,16 +185,24 @@ static inline void remove_from_queues(struct buffer_head * bh)
 		panic("Free block list corrupted");
 	bh->b_prev_free->b_next_free = bh->b_next_free;
 	bh->b_next_free->b_prev_free = bh->b_prev_free;
+	/*
+	 * 如果是free_list的头部，则将头部设置为下一个
+	 */
 	if (free_list == bh)
 		free_list = bh->b_next_free;
 }
 
 /*
- * 将bh加入hash表
+ * 将bh加入buffer的空闲列表
+ * 如果这个buffer和设备关联则将其根据设备号和block加入hash表中方便查找
+ 
  */
 static inline void insert_into_queues(struct buffer_head * bh)
 {
 	/* put at end of free list */
+	/*
+	 * 将buffer加入free_list的最后面
+	 */
 	bh->b_next_free = free_list;
 	bh->b_prev_free = free_list->b_prev_free;
 	free_list->b_prev_free->b_next_free = bh;
@@ -194,9 +212,18 @@ static inline void insert_into_queues(struct buffer_head * bh)
 	bh->b_next = NULL;
 	if (!bh->b_dev)
 		return;
+	/*
+	 * 仔细分析，下面的代码将bh加入hash表的最前面
+	 * hash(bh->b_dev,bh->b_blocknr)表示当前的hash_table对应的bh
+	 * hash(bh->b_dev,bh->b_blocknr) = bh; 将自己放置在hash_table第一个
+	 * 在讲原来hash_table中的前一个设置为自己
+	 * 到此，形成一个双向链表(不循环)
+	 * 此处应该加上if(bh->b_next)判断
+	 */
 	bh->b_next = hash(bh->b_dev,bh->b_blocknr);
 	hash(bh->b_dev,bh->b_blocknr) = bh;
-	bh->b_next->b_prev = bh;
+	if (bh->b_next)
+		bh->b_next->b_prev = bh;
 }
 
 /*
@@ -238,7 +265,7 @@ struct buffer_head * get_hash_table(int dev, int block)
 		 */
 		wait_on_buffer(bh);
 		/*
-		 * 由于可能经过睡眠，因此有必要在检查一下缓冲区的正确性
+		 * 由于可能经过睡眠，因此有必要再检查一下缓冲区的正确性
 		 */
 		if (bh->b_dev == dev && bh->b_blocknr == block)
 			return bh;
@@ -346,7 +373,16 @@ repeat:
 	bh->b_count = 1;
 	bh->b_dirt = 0;
 	bh->b_uptodate = 0;
+	/*
+	 * 将bh从free_list和hash表（如果存在）删除
+	 */
 	remove_from_queues(bh);
+	/*
+	 * 如果bh设置了b_dev则insert_int_queues会将bh加入hash表中
+	 * 也会将将bh加入free_list的尾部
+	 * 通过搜索remove_from_queues和insert_into_queues发现这两个函数只在本函数中调用
+	 * 因此一个bh无论如何都在free_list中存在
+	 */
 	bh->b_dev = dev;
 	bh->b_blocknr = block;
 	insert_into_queues(bh);
@@ -478,11 +514,20 @@ struct buffer_head * breada(int dev,int first, ...)
 	return (NULL);
 }
 
+#ifndef ROUNDUP64
+#define ROUNDUP64(x) ((((unsigned long)x)+63)&~63)
+#endif
+
 void buffer_init(long buffer_end)
 {
 	struct buffer_head * h = start_buffer;
 	void * b;
 	int i;
+	
+	/*
+	 * 将start_buffer进行64位对齐
+	 */
+	h = start_buffer = (struct buffer_head *)(ROUNDUP64((long)start_buffer));
 	/*
 	 * 如果缓冲区高端为1M，则从640KB到1MB被显示内核和BIOS占用，实际上应该是640KB
 	 * 
@@ -491,9 +536,21 @@ void buffer_init(long buffer_end)
 		b = (void *) (640*1024);
 	else
 		b = (void *) buffer_end;
+
+	printk("BUFFER linker end addr %x is %x\n", &end, end);
+	printk("BUFFER start_buffer is %x\n", start_buffer);
+	printk("BUFFER end_buffer is %x\n", buffer_end);
+
 	/*
 	 * h为start_buffer在实际跟踪过程中为end，end由链接程序生成，内核代码最末端
 	 * while里面保证h和b不重合
+	 * h = start_buffer = &end 表示内核的链接地址最大处
+	 * b 在start_kernel中定义 buffer_memory_end 根据内存大小保留的buffer末端
+	 * 通过如下程序我们可以看到
+	 * 从start_buffer开始存放buffer_head结构，
+	 * buffer_head结构中的数据指向buffer的后面
+	 * | buffer_head | buffer_head | ..... | buffer block | buffer block | end |
+	 *
 	 */
 	while ((b -= BLOCK_SIZE) >= ((void *) (h+1))) {
 		h->b_dev = 0;
@@ -512,9 +569,11 @@ void buffer_init(long buffer_end)
 		if (b == (void *) 0x100000)		//如果地址递减到1MB，则跳过显存和BIOS
 			b = (void *) 0xA0000;		//b设置为640KB
 	}
-	/* h--指向最后的buffer_head
+	/* h--是因为上面的while循环退出了，也就是buffer_head和buffer_block重合了
+	 * 此次需要减一
+	 *
 	 * 如下的语句就是将buffer_head组成一个双向循环链表
-	 * 头部为start_buffer
+	 * 头部为start_buffer，free_list指向start_buffer
 	 */
 	h--;
 	free_list = start_buffer;
@@ -522,6 +581,7 @@ void buffer_init(long buffer_end)
 	h->b_next_free = free_list;
 	/*
 	 * 初始化哈希表
+	 * 为了方便查找，内核使用hash表进行buffer的维护
 	 */
 	for (i=0; i < NR_HASH; i++)
 		hash_table[i]=NULL;
