@@ -21,6 +21,12 @@
 #
 # SYSSIZE是要加载的节数（16个字节为1节）0x3000*16也就是192KB的大小，
 # 对于当前的内核来说已经足够了
+# 80386在启动后处于8086,8086内存分段最大可寻址1MB的内存，这1MB的内存排列如下：
+# 0x00000 - 0x9FFFF 640KB， 最低1KB位BIOS中断向量表
+# 0xA0000 - 0xB7FFF 外围设备
+# 0xB8000 - 0xBFFFF 显存
+# 0xC0000 - 0xEFFFF 外围设备
+# 0xF0000 - 0xFFFFF BIOS
 #
 	.equ SYSSIZE, 0x3000
 #
@@ -37,7 +43,8 @@
 #
 # 以上的数据读取都使用了BIOS调用
 #
-#
+# 问：为什么要将bootsect和setup模块存放到0x90000地址处
+# 答：这里其实没有任何特殊的考虑，0x90000不会覆盖到外围区域，并且预留了576KB给内核使用
 #
 # bootsect.s is loaded at 0x7c00 by the bios-startup routines, and moves
 # iself out of the way to address 0x90000, and jumps there.
@@ -49,6 +56,10 @@
 # problem, even in the future. I want to keep it simple. This 512 kB
 # kernel size should be enough, especially as this doesn't contain the
 # buffer cache as in minix
+#
+# 将system模块存放在0x10000，将bootsect和setup模块存放到0x90000
+# 也就是说system模块的范围为0x10000 - 0x90000 一共 0x80000个字节（512KB）空间
+#
 #
 # The loader has been made as simple as possible, and continuos
 # read errors will result in a unbreakable loop. Reboot by hand. It
@@ -101,12 +112,12 @@
 # 将0x7c00的数据拷贝至0x90000(576K)处, 每次拷贝2个字节，共拷贝256次，512个字节
 # 也就是将bootsect从0x07c00拷贝到0x90000(576K)处
 #
-# 为什么要拷贝到0x90000(576K)处,这是因为system会被拷贝到0x10000(64K)处
-# 而Linus在写这个版本的Linux的时候假设内核的大小为512K,这个可以在后面的注释里看到
-# 64K+512K就是576K
+# 问：为什么要拷贝到0x90000(576K)处
+# 答：因为system会被拷贝到0x10000(64K)处，而Linus在写这个版本的Linux的时候假设内核的大小为512K,
+# 这个可以在后面的注释里看到，64K+512K就是576K
 #
-# 问题：那为什么system要拷贝到0x10000而不是直接拷贝到0x00000地址呢，
-# 这是因为在setup模块中需要用到BIOS调用获取一些硬件参数，而BIOS中断向量表和服务程序可能占用了64K的地址
+# 问：那什么system要拷贝到0x10000而不是直接拷贝到0x00000地址呢，
+# 答：这是因为在setup模块中需要用到BIOS调用获取一些硬件参数，而BIOS中断向量表和服务程序可能占用了64K的地址
 # 这就是为什么在setup的最后又将system模块拷贝到0x00000地址的原因
 #
 _start:
@@ -149,12 +160,17 @@ go:	mov	%cs, %ax					# CS = 0x9000
 # 扇区开始读取数据，存放在当前数据段的0x200处，也就是0x90200处，读取成功后挑战至
 # ok_load_setup处开始运行，读取失败后继续进行尝试读取
 # 目前我们只需知道其含义即可，具体可参考<Linux内核完全注释的讲解>
+# sector扇区从1开始编号
+# drive（驱动控制器），head（磁头），track（磁道）都是从0开始编号
+# 还有一个概念就是柱面（Cylinder）多个磁盘的同一个磁道是一个柱面
+# 一般一个磁道有63个扇区，每个扇区512个字节
+#
 #
 load_setup:
 	mov	$0x0000, %dx				# drive 0, head 0
 	mov	$0x0002, %cx				# sector 2, track 0
 	mov	$0x0200, %bx				# address = 512, in INITSEG
-	mov $0x200+SETUPLEN, %ax		# service 2, nr of sectors, SETUPLEN is 4
+	mov $0x0200+SETUPLEN, %ax		# service 2, nr of sectors, SETUPLEN is 4
 	int	$0x13						# read it
 	jnc	ok_load_setup				# ok - continue
 	mov	$0x0000, %dx				
@@ -168,6 +184,7 @@ ok_load_setup:
 # Get disk drive parameters, specifically nr of sectors/track
 # 获取当前软盘驱动的参数放在sectors处
 # cs和ds是一样的，因此cs:sectors是可以修改为sectors+0
+# 
 #
 	mov	$0x00, %dl
 	mov	$0x0800, %ax				# AH=8 is get drive parameters
