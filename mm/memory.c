@@ -69,7 +69,7 @@ __asm__ __volatile__("movl %%cr3,%%eax\n\tmovl %%eax,%%cr3":::"ax")
  */
 static unsigned long HIGH_MEMORY = 0;
 static unsigned long LOW_MEMORY = 0;
-static unsigned long total_pages = 0;
+static unsigned long available_pages = 0;
 static unsigned char mem_map [ PAGING_PAGES ] = {0,};
 /* chenwg
  * 复制一页4KB的内存
@@ -839,10 +839,11 @@ void do_no_page(unsigned long error_code, unsigned long address)
 /*
  * 获取系统的内存
  */
-long get_total_pages(void)
+long get_available_pages(void)
 {
-	return total_pages;
+	return available_pages;
 }
+
 
 /*
  * start_mem 表示内存的起始地址，当内存大小为16M，start_mem为6M
@@ -862,15 +863,21 @@ void mem_init(long start_mem, long end_mem)
 	 */
 	HIGH_MEMORY = end_mem;
 	LOW_MEMORY = start_mem;
-	for (i=0 ; i<PAGING_PAGES ; i++) {
+	/*
+	 * 先将所有的内存都设置为USED
+	 */
+	for (i = 0; i < PAGING_PAGES; i++) {
 		mem_map[i] = USED;
 	}
+	/*
+	 * 将从start_mem开始到end_mem的mem_map设置为0
+	 */
 	i = MAP_NR(start_mem);
 	end_mem -= start_mem;
 	end_mem >>= 12;
-	total_pages= end_mem;
-	while (end_mem-->0) {
-		mem_map[i++]=0;
+	available_pages = end_mem;
+	while (end_mem-- > 0) {
+		mem_map[i++] = 0;
 	}
 }
 

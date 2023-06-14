@@ -77,7 +77,7 @@ extern void chr_dev_init(void);
 extern void hd_init(void);
 extern void floppy_init(void);
 extern void mem_init(long start, long end);
-extern long get_total_pages(void);
+extern long get_available_pages(void);
 extern long rd_init(long mem_start, int length);
 extern long kernel_mktime(struct tm * tm);
 extern long startup_time;
@@ -155,6 +155,13 @@ void start_kernel(int __a, int __b, int __c)
 	 * memory_end就是1MB加上扩展内存，也就是内存的大小
 	 * memory_end & 0xffff000 可知我们要求内存4KB对齐
 	 * 如果内存大于16MB，则设置内存最大为16MB，
+	 * 问：我们可以在这里设置内核直接映射内存的大小可行么
+	 * 答：不行，PAGING_MEMORY没有修改，内核维护的仍是16MB
+	 * 问：改了PAGING_MEMORY行吗
+	 * 答：不行，head.s没有做映射，仍不可访问
+	 * 问：那该怎么办
+	 * 答：两种办法，一种是修改head.s进行映射，另一种是实现一个map函数，将HIGH_MEM进行映射访问
+	 * 也应该同时修改PAGING_MEMORY宏定义用于支持更大的内存
 	 * 
 	 */
 	memory_end = (1<<20) + (EXT_MEM_K<<10);
@@ -191,7 +198,7 @@ void start_kernel(int __a, int __b, int __c)
 	printk("params a=%d b=%d c=%d\n", __a, __b, __c);
 	printk("mem_start is %dMB\n", main_memory_start/(1024*1024));
 	printk("men_end is %dMB\n", memory_end/(1024*1024));
-	printk("system has %d pages omg\n", get_total_pages());
+	printk("system has available %d pages omg\n", get_available_pages());
 #ifdef RAMDISK_SIZE
 	printk("ramdisk size is %dMB\n", RAMDISK_SIZE/1024);
 #endif
