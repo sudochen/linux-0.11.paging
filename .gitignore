@@ -1,3 +1,4 @@
+*.vmdk
 *.log
 *.elf
 *.bak
@@ -20,3 +21,4 @@ kernel.bin
 kernel.sym
 kernel.map
 *.img
+/.vscode/
