@@ -622,7 +622,7 @@ void sched_init(void)
 	 * 安装系统调用的陷阱门
 	 * 0x80的陷阱门的DPL设置为3，意思是用户代码可以通过INT 0x80进入内核态
 	 * 在Linux系统中只使用中断门(set_intr_gate)和陷阱门
-	 *  陷阱门使用两个set_trap_gate和set_system_gate
+	 * 陷阱门使用两个set_trap_gate和set_system_gate
 	 *
 	 */
 	set_system_gate(0x80, &system_call);

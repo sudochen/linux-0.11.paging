@@ -71,11 +71,12 @@ static unsigned long HIGH_MEMORY = 0;
 static unsigned long LOW_MEMORY = 0;
 static unsigned long available_pages = 0;
 static unsigned char mem_map [ PAGING_PAGES ] = {0,};
+
 /* chenwg
  * 复制一页4KB的内存
  *
  */
-void copy_page(unsigned long from, unsigned to)
+void copy_page(unsigned long from, unsigned long to)
 {
 #ifdef LINUX_ORG
 	__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024));
@@ -96,6 +97,7 @@ void copy_page(unsigned long from, unsigned to)
  * 
  *
  */
+
 unsigned long get_free_page(void)
 {
 #ifdef LINUX_ORG
@@ -120,9 +122,6 @@ register unsigned long __res asm("ax");
 	unsigned long j = 0;
 	unsigned long i = MAP_NR(LOW_MEMORY);
 
-	/*
-	 * 我们希望获取页是一个不可打断的过程，因此禁用中断
-	 */
 	while(i < PAGING_PAGES) {
 		/*
 		 * 如果是保留页或者页计数不为0
@@ -140,7 +139,12 @@ register unsigned long __res asm("ax");
 		 */
 		i = PAGING_ADDR(i);
 		/*
-		 * 将物理地址清零
+		 * 将物理页清零，循环1024次，每次清零4个字节
+		 * 问：当前进程运行在内核态，为什么能够直接访问物理地址
+		 * 答：假设获取的物理地址为A
+		 * 则经过段式映射为0xC0000000 + A
+		 * 根据head.s我们可以知道0xC000000 + A == A
+		 * 因此可直接对物理地址进行访问
 		 */
 		for (j = 0; j < 4096; j += 4) {
 			*((unsigned int *)(i + j)) = 0;

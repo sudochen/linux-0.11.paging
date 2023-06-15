@@ -71,13 +71,15 @@ clean:
 
 run: qemu
 
-QEMU_OPS_T := -nographic -serial mon:stdio -m 64M -boot a
+QEMU_OPS_X 	:= -m 64M -boot a
+QEMU_OPS_T	:= -m 64M -boot a -nographic -serial mon:stdio
+QEMU_FLP_A	:= -fda Image
+QEMU_FLP_B	:= -fdb ./rootfs/rootimage-0.11.img
+QEMU_HD0	:= -hda ./rootfs/hdc-0.11.img
 qemu:
-	qemu-system-i386 ${QEMU_OPS_T} -fda Image -fdb ./rootfs/rootimage-0.11.img -hda ./rootfs/hdc-0.11.img 
-
-QEMU_OPS_X := -m 64M -boot a
+	qemu-system-i386 ${QEMU_OPS_T} ${QEMU_FLP_A} ${QEMU_FLP_B} $(QEMU_HD0)
 qemu-x:
-	qemu-system-i386 ${QEMU_OPS_X} -fda Image -fdb ./rootfs/rootimage-0.11.img -hda ./rootfs/hdc-0.11.img 
+	qemu-system-i386 ${QEMU_OPS_X} ${QEMU_FLP_A} ${QEMU_FLP_B} $(QEMU_HD0)
 
 bochs:
 	bochs -f bochsrc
@@ -85,8 +87,7 @@ bochs:
 distclean: clean
 	$(Q)rm -f tag* cscope* linux-0.11.*
 
-FORCE: ;
-
+FORCE: ; 
 help::
 	$(Q)echo ""
 	$(Q)echo "Default use Serial for stdin stdout stderr"

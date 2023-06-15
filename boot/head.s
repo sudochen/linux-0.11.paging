@@ -390,7 +390,7 @@ gdt_descr:
 gdt:
 	.quad 0x0000000000000000	# NULL descriptor
 	.quad 0xc0c09a0000000fff	# 16Mb at 0xC0000000
-	.quad 0xc0c0920000000fff	# 16Mb
+	.quad 0xc0c0920000000fff	# 16Mb at 0xC0000000
 	.quad 0x0000000000000000	# TEMPORARY - don't use
 	.fill 252,8,0			    # space for LDT's and TSS
 

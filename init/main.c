@@ -214,10 +214,12 @@ void start_kernel(int __a, int __b, int __c)
 	 */	
 	sti();
 	/*
-	 * 执行完move_to_user_mode函数后，程序会手工切到task0执行，测代码段和数据段
-	 * 和内核一致，堆栈也使用了内核堆栈，运行权限变成3, 因此我们可以看出Linux中
-	 * 使用0和3权限
-	 * 具体可以查看move_to_user_mode分析
+	 * 执行完move_to_user_mode函数后，程序会手工切到task0执行，
+	 * 目前代码使用全局段描述符表里的代码段和数据段，基地址为0xC0000000
+	 * 寻址时程序的地址会加上0xC0000000高地址运行
+	 * move_to_user_mode执行后，程序使用局部段描述符表，每个进程有自己的局部段描述表
+	 * move_to_user_mode通过构造堆栈，然后使用iret手动让代码运行到用户空间
+	 * 
  	 */
 	move_to_user_mode();
 
@@ -256,17 +258,25 @@ void start_kernel(int __a, int __b, int __c)
      * CPU从中断描述符中取CS:EIP作为新的运行地址
 	 * 
 	 * 为什么fork和pause需要inline执行呢
-	 * 我们需要知道的是，task0没有写时复制机制，fork后的task1有写时复制机制
-	 * 假设不是内联执行，当调用fork时会ESP为A，将CS:IP压入当前系统堆栈中也就是任务0的用户堆栈中stack_start，此时ESP为B
-	 * 然后执行INT 80, 此指令会将SS ESP EFLAGS CS EIP ... 压入任务0的内核堆栈
-	 * 在系统调用过程中会产生任务切换，因此从系统调用退出时就可能有两种情况，一种是task0，一种是task1
-	 * 怎么区分task0还是task1，INT 80返回后通过eax寄存器判断当前是task0还是task1
-	 * 如果是task1执行，fork退出时用户态ESP恢复返回到init()函数中则不会有影响
-	 * 如果是task0执行，fork退出时用户态ESP恢复返回到for(;;) pause执行，pause执行将CS:IP压入堆栈，
-	 *   和fork()系统调用一样，pause从内核中返回时可能进入task1（fork）进程中
-	 *   fork函数使用RET返回，会使用堆栈中的CS:IP恢复执行
-	 * 我们设想一下fork退出时会使用CS:IP进行恢复（能恢复吗），此时CS:IP是task0（pause）压入堆栈的返回地址
-	 * 也就是说task1执行完毕后会进入到pause中执行，系统出现问题
+	 * 我们需要知道的是，task0没有写时复制机制，fork后的task1有写时复制机制，不知道怎么理解
+	 * 总之可以导致一点就是fork执行完毕后返回到pause()执行，不能执行init()
+	 * 我们可以分析如下场景
+	 * call fork() 会执行如下
+	 * 		push cs 	task0
+	 * 		push eip	task0
+	 * 		int 80  	task0
+	 * 		[]----------------->会发生切换的，不一定先执行init函数
+	 * 		push eip	task1 task1完全复制了task0的堆栈，但是task0的堆栈有可能已经污染， task1弹出时不会出发写时复制
+	 * 		push cs		task1
+	 * if eax == 0  call init()
+	 * for(;;) call pause()		task0
+	 * 		push cs				task0
+	 * 		push eip [eip is for(;;) call pause`s address]
+	 * 在发生切换的地方可能直接运行到for(;;)pause()中，pause()将for(;;)的地址压入堆栈
+	 * 这一点要注意，也就说task0进程中保存的SS:ESP的值不变化，但是堆栈的数据由于task0的call pause()已经污染了，
+	 * 本来task0返回到 if eax == 0 判断的地方就不能返回了
+	 * 等到下一次int 80返回到用户空间时就直接执行for(;;) puase()的代码了，而不是init()了
+	 * 其实通过以上分析，我们可以知道fork()和pause()只要有一个是inline就可以了
 	 * 
 	 */
 	if (!fork()) {		/* we count on this going ok */
