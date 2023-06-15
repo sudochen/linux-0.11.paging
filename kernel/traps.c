@@ -203,9 +203,8 @@ void trap_init(void)
 {
 	int i;
 	/* 
-	 * set_trap_gate 设置陷阱门
-	 * set_system_gate 设置系统门
-	 *
+	 * set_trap_gate 和 set_system_gate都是陷阱门
+	 * set_system_gate 用户空间可访问，系统调用使用这个
 	 * 
 	 */
 	set_trap_gate(0,&divide_error);

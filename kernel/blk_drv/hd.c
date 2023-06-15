@@ -110,7 +110,10 @@ int sys_setup(void * BIOS)
 		hd_info[drive].ctl = *(unsigned char *) (8+BIOS);
 		hd_info[drive].lzone = *(unsigned short *) (12+BIOS);
 		hd_info[drive].sect = *(unsigned char *) (14+BIOS);
-		printk("Query %d HardDisk\n", drive);
+		printk("Query %d HardDisk ctl is %08x\n", drive, hd_info[drive].ctl);
+		printk("   hd[%d] cyl = %d\n", drive, hd_info[drive].cyl);
+		printk("   hd[%d] head = %d\n", drive, hd_info[drive].head);
+		printk("   hd[%d] sect = %d\n", drive, hd_info[drive].sect);
 		BIOS += 16;
 	}
 	if (hd_info[1].cyl)
@@ -203,8 +206,8 @@ int sys_setup(void * BIOS)
 		for (i=1;i<5;i++,p++) {
 			hd[i+5*drive].start_sect = p->start_sect;
 			hd[i+5*drive].nr_sects = p->nr_sects;
-			printk("   hd[%d] start_sect %d nr_sects %d\n", 
-				i+5*drive, 
+			printk("   hd[%d] partion[%d] start_sect %d nr_sects %d\n", 
+				drive, i+5*drive, 
 				hd[i+5*drive].start_sect,
 				hd[i+5*drive].nr_sects);
 		}
@@ -274,9 +277,10 @@ static int drive_busy(void)
 {
 	unsigned int i;
 
-	for (i = 0; i < 10000; i++)
+	for (i = 0; i < 10000; i++) {
 		if (READY_STAT == (inb_p(HD_STATUS) & (BUSY_STAT|READY_STAT)))
 			break;
+	}
 	i = inb(HD_STATUS);
 	i &= BUSY_STAT | READY_STAT | SEEK_STAT;
 	if (i == (READY_STAT | SEEK_STAT))
@@ -294,8 +298,12 @@ static void reset_controller(void)
 	outb(hd_info[0].ctl & 0x0f ,HD_CMD);
 	if (drive_busy())
 		printk("HD-controller still busy\n\r");
+	else
+		printk("HD-controller not busy\n\r");
 	if ((i = inb(HD_ERROR)) != 1)
 		printk("HD-controller reset failed: %02x\n\r",i);
+	else
+		printk("HD-controller reset OK: %02x\n\r",i);
 }
 
 static void reset_hd(int nr)
