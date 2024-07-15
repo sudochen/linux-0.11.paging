@@ -131,7 +131,7 @@ is_disk1:
 	cli							# no interrupts allowed ! 
 
 # first we move the system to it's rightful place
-# 下面的代码将0x10000处的代码拷贝到0x0000处，供拷贝0x80000个字节512KB，
+# 下面的代码将0x10000处的代码拷贝到0x0000处，拷贝0x80000个字节512KB，
 # 内核长度最大不能超过512K的假定前提
 # 移动了代码后以后都不能使用BIOS中断了
 # 搬移参数如下
@@ -282,7 +282,9 @@ idt_48:
 
 #
 # 0x800表示限制大小在0x800
+# 高位为0x9表示，gdt base = 0X9xxxx
 # 512+gdt可表示0x200+gdt，表示setup模块所在的的地址+gdt偏移，也就是gdt存放数据信息
+# gdt的地址为 0x90000 + 512 + gdt offset
 #
 #
 gdt_48:

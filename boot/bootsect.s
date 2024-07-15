@@ -1,12 +1,12 @@
 # 
 # BIOS系统调用
-# 80386在实模式下虽然是16位的地址，但是经过段映射后可以形成20位的地址共寻址1MB的地址空间
+# 80386在实模式下虽然是16位的地址，但是经过段映射后可以形成20位的地址,共寻址1MB的地址空间
 # BOIS会在地址0处建立1KB字节的中断向量表，每个中断向量使用4个字节的空间，
 # 前两个字节为段地址，后两个字节为偏移地址，因此一共256个中断向量
 # BIOS启动后会建立后中断向量表用于提供一些基本的功能
 # 所谓BIOS调用就是使用BIOS的中断功能来执行一些用户想要的操作
 # 
-# 在AT汇编里，EAX表示32位寄存器，AX表示16位寄存器，AH，AL表示8位寄存器
+# 在AT汇编里，EAX表示32位寄存器，AX表示16位寄存器，AH表示高8位，AL表示低8位
 #
 # .code16 表示后面是16位的汇编代码
 #
@@ -18,10 +18,12 @@
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 # versions of linux
+# SYS_SIZE是将会被加载的clicks（16个字节）的数量
+# 0x3000既0x30000个字节 = 196KB，对于当前版本的Linux已经足够使用了
 #
 # SYSSIZE是要加载的节数（16个字节为1节）0x3000*16也就是192KB的大小，
 # 对于当前的内核来说已经足够了
-# 80386在启动后处于8086,8086内存分段最大可寻址1MB的内存，这1MB的内存排列如下：
+# 80386在启动时相当于8086,8086内存分段最大可寻址1MB的内存，这1MB的内存排列如下：
 # 0x00000 - 0x9FFFF 640KB， 最低1KB位BIOS中断向量表
 # 0xA0000 - 0xB7FFF 外围设备
 # 0xB8000 - 0xBFFFF 显存
@@ -65,7 +67,7 @@
 # read errors will result in a unbreakable loop. Reboot by hand. It
 # loads pretty fast by getting whole sectors at a time whenever possible.
 #
-#
+# .global 定义全局标号
 
 	.global _start, begtext, begdata, begbss, endtext, enddata, endbss
 	.text
@@ -133,7 +135,9 @@ _start:
 
 # 
 # 跳转至$INITSEC:go处运行，INITSEG定义为0x9000
-# 因此也就是跳转至下面的标号“go”的地方开始运行，这条语句会将CS设置为INITSEG
+# 因为上面的代码已经将bootsect搬移到0x90000了
+# 因此也就是跳转至下面的标号“go”的地方开始运行，此时运行地址的偏移为0x90000
+# 这条语句会将CS设置为INITSEG
 #
 #	
 	ljmp $INITSEG, $go				# jump 0x9000:go

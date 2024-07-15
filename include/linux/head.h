@@ -7,7 +7,7 @@ typedef struct desc_struct {
 
 /*
  * 页表目录
- * 这些都在heas模块中定义
+ * 这些都在head.s模块中定义
  */
 extern unsigned long swapper_pg_dir[1024];
 extern desc_table idt,gdt;

@@ -1,7 +1,7 @@
 # 
 # 32位指令，在这就进入到保护模式了
-# 在本模块中，内核的起始地址为0xC0000000，用户程序的起始地址为0x00000000
-# 我对原来的Linux0.11中的内存相关进行了修改，对于一个进程使用1GB的内核空间和3GB的用户空间
+# 我对原来的Linux0.11中的内存相关进行了修改，一个进程使用1GB的内核空间和3GB的用户空间
+# 内核空间的起始地址为0xC0000000，用户空间的起始地址为0x00000000
 #
 .code32
 
@@ -173,7 +173,7 @@ after_page_tables:
 	lgdt gdt_descr			# 重新加载全局描述符
 	lidt idt_descr			# 重新加载中断描述符
 #
-# 加载完成后内核的代码和数据基地址为0xc0000000
+# 加载完成后内核的代码和数据基地址为0xc000 0000
 #
 	ljmp $0x08,$1f			# 跳转到代码段的1处运行，也就是下面的1处，强制更改了CS
 #
@@ -185,7 +185,7 @@ after_page_tables:
 	mov %ax,%ds				# after changing gdt.
 	mov %ax,%es				# relaod的目的在于刷新描述符高速缓存
 	mov %ax,%fs
-	mov %ax,%gs
+	mov %ax,%gs				# 此时程序运行在0xc0000000地址处
 	lss stack_start,%esp	# 重新设置堆栈
 	pushl $8				# These are the parameters to main :-)
 	pushl $7
@@ -252,7 +252,9 @@ setup_paging:
 	movl $1024*5,%ecx		    # 5 pages - swapper_pg_dir+4 page tables 
 	xorl %eax,%eax				# eax = 0
 	xorl %edi,%edi			    # swapper_pg_dir is at 0x000
-	cld;rep;stosl				# stosl *EDI = EAX; 
+	cld
+	rep
+	stosl						# stosl *EDI = EAX; 
 #
 # 上面的代码将0地址开始的20K空间清零，
 # 在这里插入一点知识，X86首先进行段式映射，然后在进行页式映射，
@@ -359,7 +361,7 @@ setup_paging:
 	movl %eax,%cr0		        # set paging (PG) bit
 	ret			                # this also flushes prefetch-queue
 # 
-# 因为是平坦映射，ret还是可以返回到原地址的
+# 目前运行在0地址处，因为是平坦映射，ret还是可以返回到原地址的
 # 试想一下如果映射非平坦映射，ret应该是跑飞的
 # ret也会刷新预取队列
 #
@@ -389,8 +391,8 @@ gdt_descr:
 .align 4
 gdt:
 	.quad 0x0000000000000000	# NULL descriptor
-	.quad 0xc0c09a0000000fff	# 16Mb at 0xC0000000
-	.quad 0xc0c0920000000fff	# 16Mb at 0xC0000000
+	.quad 0xc0cf9a000000ffff	# 4GB at 0xC0000000
+	.quad 0xc0cf92000000ffff	# 4GB at 0xC0000000
 	.quad 0x0000000000000000	# TEMPORARY - don't use
 	.fill 252,8,0			    # space for LDT's and TSS
 

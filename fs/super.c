@@ -177,7 +177,7 @@ static struct super_block * read_super(int dev)
 	/*
 	 * 判断超级块的magic number是否为0x13f7
 	 * 表示是否为MINIX文件系统，
-	 * 后来mkfs.minix修改为0x13f8
+	 * 后来mkfs.minix修改为0x13f8，此处使用0x13f7
 	 */
 	if (s->s_magic != SUPER_MAGIC) {
 		s->s_dev = 0;
@@ -193,7 +193,7 @@ static struct super_block * read_super(int dev)
 		s->s_zmap[i] = NULL;
 	/*
 	 * 读i节点和逻辑位图节点信息
-	 * s_imap_blocks表示i节点位图使用多个块保存，做多8个
+	 * s_imap_blocks表示i节点位图使用多个块保存，最多8个
 	 * s_zmap_blocks表示逻辑块位图使用多个个块保存，最多8个
 	 */
 	block = 2;
@@ -389,7 +389,7 @@ void mount_root(void)
 	free=0;
 	/*
 	 * 统计该设备上的空闲块数，先让i等于该设备总的逻辑块数
-	 * s_nzones表示总逻辑块数包含了load，超级块等
+	 * s_nzones表示总逻辑块数包含了引导快，超级块等
 	 * s_zmap逻辑块位图缓冲块指针数组，8个块
 	 * s_ninodes表示节点数从1开始计数
 	 * s_imap节点位图缓冲块指针数组，8个块
@@ -411,8 +411,7 @@ void mount_root(void)
 	printk("%s %d/%d free blocks\n\r", __func__, free, p->s_nzones);
 	/*
 	 * 重置free，计算inode
-	 * p->s_ninodes是从1开始计数的
-	 * 虽然bit0没有对应的inode结构，但还是统计上
+	 * p->s_ninodes是从1开始计数的或者说s_ninodes没有包含0节点,
 	 * 
 	 */
 	free=0;

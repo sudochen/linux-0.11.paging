@@ -34,6 +34,7 @@
  * 需要强调的是，如果下一次进行系统调用，会使用task_start结构中的最高地址作为栈的地址
  *
  */
+
 #define move_to_user_mode() \
 __asm__ ("movl %%esp,%%eax\n\t" \
 	"pushl $0x17\n\t" \
@@ -48,6 +49,23 @@ __asm__ ("movl %%esp,%%eax\n\t" \
 	"movw %%ax,%%fs\n\t" \
 	"movw %%ax,%%gs" \
 	:::"ax")
+
+#if 0
+#define move_to_user_mode() \
+__asm__ ("movl %%esp,%%eax\n\t" \
+	"pushl $0x23\n\t" \
+	"pushl %%eax\n\t" \
+	"pushfl\n\t" \
+	"pushl $0x1b\n\t" \
+	"pushl $1f\n\t" \
+	"iret\n" \
+	"1:\tmovl $0x23,%%eax\n\t" \
+	"movw %%ax,%%ds\n\t" \
+	"movw %%ax,%%es\n\t" \
+	"movw %%ax,%%fs\n\t" \
+	"movw %%ax,%%gs" \
+	:::"ax")
+#endif
 
 /*
  * cli 禁止中断

@@ -50,7 +50,7 @@ __asm__ __volatile__("movl %%cr3,%%eax\n\tmovl %%eax,%%cr3":::"ax")
 /*
  * mem_map中的标记为USED表示内核维护的页
  */
-#define USED 				0x80
+#define USED 		0x80
 /*
  * 页属性
  */
@@ -94,6 +94,7 @@ void copy_page(unsigned long from, unsigned long to)
  * 
  * 获取一个空闲页的物理地址，获取的页物理地址从LOW_MEM开始
  * 如果成功返回一个物理地址，如果没有返回0
+ * 在这里我们需要明确一下，内核态下物理地址可以直接访问，并且task0的虚拟地址等于物理地址
  * 
  *
  */
@@ -338,18 +339,18 @@ int copy_page_tables(struct task_struct * tsk)
 	unsigned long new_pg_dir, *new_page_dir;
 
 	/*
-	 * 获取当前进程的页表目录的地址
+	 * 获取当前进程的页目录的地址
 	 */
 	old_pg_dir = current->tss.cr3;
 	/*
-	 * 获取一个物理页用于新进程的页表目录
+	 * 获取一个物理页用于新进程的页目录
 	 */
 	new_pg_dir = get_free_page();
 	if (!new_pg_dir)
 		return -1;
 	
 	/*
-	 * 将新页表目录的物理地址存放在TSS的CR3中，CR3存放的是页表目录基地址
+	 * 将新页目录的物理地址存放在进程数据结构TSS的CR3中，CR3存放的是页目录基地址
 	 */
 	tsk->tss.cr3 = new_pg_dir;
 	old_page_dir = (unsigned long *) old_pg_dir;
@@ -371,8 +372,8 @@ int copy_page_tables(struct task_struct * tsk)
 	}
 	
 	/*
-	 * 变量页表目录，进程0用户空间只有一个目录项，
-	 * 内核空间从768项开始有4项有效，共16MB的空间
+	 * 
+	 * 内核空间从768（3GB）项开始有4项有效，共16MB的空间
 	 * 
 	 */
 	for (i = 0 ; i < 1024 ; i++,old_page_dir++,new_page_dir++) {
@@ -381,7 +382,7 @@ int copy_page_tables(struct task_struct * tsk)
 		unsigned long new_pg_table, *new_page_table;
 
 		/*
-		 * 页表目录存放了页表的地址，每个页表也有1024项 
+		 * 页目录的每一项存放了页表的地址，每个页表也有1024项 
 		 */
 		old_pg_table = *old_page_dir;
 		/*
@@ -862,7 +863,7 @@ void mem_init(long start_mem, long end_mem)
 	 * MAP_NR(addr)定义为(((unsigned long)(addr))>>12)表示addr的索引号
 	 * end_mem -= start_mem计算出可用内存的大小
 	 * end_mem >>= 12 右移12位相当于除以4096，表示可用内存大小占用的页数，并将这个值赋值给total_pages
-	 * 下面的语句先将mem_map设置为USED，表示所有的内存都已经使用
+	 * 下面的语句先将mem_map设置为USED，表示内核保留内存
 	 * 然后将将start_mem到end_mem之间的mem_map设置为0，表示空闲
 	 */
 	HIGH_MEMORY = end_mem;

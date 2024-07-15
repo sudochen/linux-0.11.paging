@@ -22,9 +22,6 @@
  * some others too.
  *
  * 在我看来只需要fork或者pause中有一个为inline就可以，通过修改程序也证实可以
- * 我们想象一下这样的一个场景
- * fork时将返回地址入栈，启动系统调用，调用完成后如果发生进程切换
- * 会导致task0运行，task0运行会将pause的地址入栈，
  *
  *
  */
@@ -262,15 +259,12 @@ void start_kernel(int __a, int __b, int __c)
 	 * 总之可以导致一点就是fork执行完毕后返回到pause()执行，不能执行init()
 	 * 我们可以分析如下场景
 	 * call fork() 会执行如下
-	 * 		push cs 	task0
 	 * 		push eip	task0
 	 * 		int 80  	task0
 	 * 		[]----------------->会发生切换的，不一定先执行init函数
-	 * 		push eip	task1 task1完全复制了task0的堆栈，但是task0的堆栈有可能已经污染， task1弹出时不会出发写时复制
-	 * 		push cs		task1
+	 * 		pop eip		task1 task1完全复制了task0的堆栈，但是task0的堆栈有可能已经污染， task1弹出时不会出发写时复制
 	 * if eax == 0  call init()
 	 * for(;;) call pause()		task0
-	 * 		push cs				task0
 	 * 		push eip [eip is for(;;) call pause`s address]
 	 * 在发生切换的地方可能直接运行到for(;;)pause()中，pause()将for(;;)的地址压入堆栈
 	 * 这一点要注意，也就说task0进程中保存的SS:ESP的值不变化，但是堆栈的数据由于task0的call pause()已经污染了，

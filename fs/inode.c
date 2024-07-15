@@ -463,13 +463,16 @@ static void read_inode(struct m_inode * inode)
 	 * inode->i_num 表示inode的编号
 	 *
 	 * 启动块+超级块+imap_blocks+zmap_blocks
-	 * (inode->i_num-1)/INODES_PER_BLOCK表示一个块中存放多个inode
+	 * (inode->i_num-1)/INODES_PER_BLOCK表示一个块中存放多少个inode
 	 * 这个意思是这个需要读取的inode在第几个块中
 	 *
 	 * inode->i_num-1是因为0号inode是保留的吗
 	 */
 	block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks +
 		(inode->i_num-1)/INODES_PER_BLOCK;
+	if (ROOT_INO == inode->i_num) {
+		printk("ROOT_INO block is %d\n", block);
+	}
 	/*
 	 * 从逻辑块block读取一块数据，返回值为高速缓存结构体
 	 *
