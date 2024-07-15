@@ -21,4 +21,4 @@ kernel.bin
 kernel.sym
 kernel.map
 *.img
-/.vscode/
+/linux011paging.*
