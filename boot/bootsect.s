@@ -19,10 +19,8 @@
 # 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 # versions of linux
 # SYS_SIZE是将会被加载的clicks（16个字节）的数量
-# 0x3000既0x30000个字节 = 196KB，对于当前版本的Linux已经足够使用了
+# 0x3000个clicks既0x30000个字节 = 192KB，对于当前版本的Linux已经足够使用了
 #
-# SYSSIZE是要加载的节数（16个字节为1节）0x3000*16也就是192KB的大小，
-# 对于当前的内核来说已经足够了
 # 80386在启动时相当于8086,8086内存分段最大可寻址1MB的内存，这1MB的内存排列如下：
 # 0x00000 - 0x9FFFF 640KB， 最低1KB位BIOS中断向量表
 # 0xA0000 - 0xB7FFF 外围设备
@@ -35,7 +33,7 @@
 #	bootsect.s		(C) 1991 Linus Torvalds
 #
 # 编译系统编译的镜像存放格式为：
-# | 512 bootsect | 512*4 setup | system(head,kernel} |
+# | 512 bootsect | 512*4 setup | system(head, kernel} |
 #
 # BOIS会将启动设备的前512字节拷贝至内存的0x7c00处，并跳转到此处运行，
 # bootsect程序主要将自己（512个字节）搬移到0x90000(576K)处，
@@ -78,11 +76,11 @@
 	begbss:
 	.text
 #
-# SETUPLEN 表示setup模块占用sectors的数量，一个sectors为512字节
-# BOOTSEG 表示bootsect模块的原始运行地址
-# INITSEG 表示bootsect模块搬移后的运行地址
-# SETUPSEG 表示setup模块的运行地址
-# SYSEG 表示system模块的运行地址，system最终会被搬移到0地址
+# SETUPLEN 表示setup模块占用sectors的数量，sectors译为扇区，一个sectors为512字节
+# BOOTSEG 表示bootsect模块的原始运行段地址
+# INITSEG 表示bootsect模块搬移后的运行段地址
+# SETUPSEG 表示setup模块的运行段地址
+# SYSEG 表示system模块的加载时的段地址，system最终会被搬移到0地址
 # ENDSEG 表示system模块的结束地址
 #
 	.equ SETUPLEN, 4				# nr of setup-sectors
@@ -138,6 +136,7 @@ _start:
 # 因为上面的代码已经将bootsect搬移到0x90000了
 # 因此也就是跳转至下面的标号“go”的地方开始运行，此时运行地址的偏移为0x90000
 # 这条语句会将CS设置为INITSEG
+# 注意c代码里编译后使用的是偏移地址
 #
 #	
 	ljmp $INITSEG, $go				# jump 0x9000:go
