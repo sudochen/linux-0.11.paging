@@ -18,8 +18,10 @@
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 # versions of linux
-# SYS_SIZE是将会被加载的clicks（16个字节）的数量
+# SYS_SIZE是将会被加载的clicks（16个字节）的数量，其实就是段地址
 # 0x3000个clicks既0x30000个字节 = 192KB，对于当前版本的Linux已经足够使用了
+# 在这里我将SYS_SIZE修改为0x8000，一共读取512KB，
+# 在setup模块中将system模块一共移动512KB
 #
 # 80386在启动时相当于8086,8086内存分段最大可寻址1MB的内存，这1MB的内存排列如下：
 # 0x00000 - 0x9FFFF 640KB， 最低1KB位BIOS中断向量表
@@ -28,7 +30,7 @@
 # 0xC0000 - 0xEFFFF 外围设备
 # 0xF0000 - 0xFFFFF BIOS
 #
-	.equ SYSSIZE, 0x3000
+	.equ SYSSIZE, 0x8000
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
 #
@@ -214,6 +216,7 @@ ok_load_setup:
 # 读取SYS模块，存放在地址0x10000（64K）开始的地方，
 # 根据前面的SYSSIZE定义我们知道一共读取0x3000*16个字节也就是192KB的内容
 # 对于我们来说已经够了，我们可以计算出当前的最大地址为64 + 192 = 256KB，
+# 此处我将SYSSIZE定义为0x8000，一共读取至64 + 512 = 576KB地址处，0x90000
 # 不能覆盖到bootsect和setup模块的起始地址
 # ok, we've written the message, now
 # we want to load the system (at 0x10000)
