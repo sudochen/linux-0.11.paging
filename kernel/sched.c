@@ -71,7 +71,10 @@ union task_union {
 /*
  * 第一个进程数据结构
  */
+#if 0
 static union task_union init_task = {INIT_TASK,};
+#endif
+static union task_union init_task;
 struct tss_struct *tss = &(init_task.task.tss);
 long volatile jiffies = 0;
 long startup_time = 0;
@@ -548,13 +551,75 @@ void sched_init(void)
 	
 	if (sizeof(struct sigaction) != 16)
 		panic("Struct sigaction MUST be 16 bytes");
+
+	/* clean init_task page */
+	printk("start clean init_task\n");
+	for (i = 0; i < PAGE_SIZE; i++) {
+		init_task.stack[i] = 0;
+	}
+
+	/* -1 unrunnable, 0 runnable, >0 stopped */
+	init_task.task.state = 0;
+	init_task.task.counter = 15;
+	init_task.task.priority = 15;
+	init_task.task.signal = 0;
+	init_task.task.blocked = 0;
+	init_task.task.stack_top = PAGE_SIZE + (long)&init_task;
+	init_task.task.exit_code = 0;
+	init_task.task.start_code = 0;
+	init_task.task.end_code = 0;
+	init_task.task.end_data = 0;
+	init_task.task.brk = 0;
+	init_task.task.start_stack = 0;
+	init_task.task.pid = 0;
+	init_task.task.father = -1;
+	init_task.task.pgrp = 0;
+	init_task.task.session = 0;
+	init_task.task.leader = 0;
+	init_task.task.uid = init_task.task.euid = init_task.task.suid = 0;
+	init_task.task.gid = init_task.task.egid = init_task.task.sgid = 0;
+	init_task.task.alarm = 0;
+	init_task.task.utime = 0;
+	init_task.task.stime = 0;
+	init_task.task.cutime = 0;
+	init_task.task.cstime = 0;
+	init_task.task.start_time = 0;
+	init_task.task.used_math = 0;
+	init_task.task.tty = -1;
+	init_task.task.umask = 0x22;
+	init_task.task.pwd = NULL;
+	init_task.task.root = NULL;
+	init_task.task.executable = NULL;
+	init_task.task.close_on_exec = 0;
+
+	/* LDT Base=0, limit=0x9ffff (=640kB) */
+	init_task.task.ldt[0].a = 0;
+	init_task.task.ldt[0].b = 0;
+	init_task.task.ldt[1].a = 0x9f;
+	init_task.task.ldt[1].b = 0xc0fa00;
+	init_task.task.ldt[2].a = 0x9f;
+	init_task.task.ldt[2].b = 0xc0f200;
+
+	/* TSS */
+	init_task.task.tss.back_link = 0;
+	init_task.task.tss.esp0 = PAGE_SIZE+(long)&init_task;
+	init_task.task.tss.ss0 = 0x10;
+	init_task.task.tss.cr3 = (long)&swapper_pg_dir;
+	init_task.task.tss.es = 0x17;
+	init_task.task.tss.cs = 0x17;
+	init_task.task.tss.ss = 0x17;
+	init_task.task.tss.ds = 0x17;
+	init_task.task.tss.fs = 0x17;
+	init_task.task.tss.gs = 0x17;
+	init_task.task.tss.ldt = _LDT(0);
+	init_task.task.tss.trace_bitmap = 0x80000000;
 	
 	/*
 	 * FIRST_TSS_ENTRY定义为4，表示第一个进程的TSS描述符的地址索引
 	 * FIRST_LDT_ENTRY定义为5，表示第一个进程的LDT描述符的地址索引
 	 */
-	set_tss_desc(gdt+FIRST_TSS_ENTRY, &(init_task.task.tss));
-	set_ldt_desc(gdt+FIRST_LDT_ENTRY, &(init_task.task.ldt));
+	set_tss_desc(gdt+FIRST_TSS_ENTRY,&(init_task.task.tss));
+	set_ldt_desc(gdt+FIRST_LDT_ENTRY,&(init_task.task.ldt));
 
 #ifdef CONFIG_SWITCH_TSS
 	printk("task switch use TSS\n");
@@ -570,7 +635,7 @@ void sched_init(void)
 	 * 每次清理两项，也就是TSS和LDT
 	 * 
 	 */
-	p = gdt+2+FIRST_TSS_ENTRY;
+	p = gdt + 2 + FIRST_TSS_ENTRY;
 	for(i=1; i<NR_TASKS; i++) {
 		task[i] = NULL;
 		p->a = p->b=0;
@@ -606,9 +671,9 @@ void sched_init(void)
 	 * 定时器操作，知道就行
 	 * 操作系统就是根据定时器中断驱动进行任务切换
 	 */
-	outb_p(0x36, 0x43);						/* binary, mode 3, LSB/MSB, ch 0 */
-	outb_p(LATCH & 0xff , 0x40);			/* LSB */
-	outb(LATCH >> 8 , 0x40);				/* MSB */
+	outb_p(0x36,0x43);						/* binary, mode 3, LSB/MSB, ch 0 */
+	outb_p(LATCH & 0xff,0x40);			/* LSB */
+	outb(LATCH >> 8,0x40);				/* MSB */
 	/*
 	 * 安装时钟中断门，timer_interrrupt可以发生在用户态，也可以发生在内核态
 	 * 如果发生在用户态会do_timer并调用schedule进行任务切换
@@ -616,8 +681,8 @@ void sched_init(void)
 	 * 需要强调的是linux0.11中所有的中断返回时都不会发生抢占
 	 *
 	 */
-	set_intr_gate(0x20, &timer_interrupt);
-	outb(inb_p(0x21)&~0x01, 0x21);
+	set_intr_gate(0x20,&timer_interrupt);
+	outb(inb_p(0x21)&~0x01,0x21);
 	/*
 	 * 安装系统调用的陷阱门
 	 * 0x80的陷阱门的DPL设置为3，意思是用户代码可以通过INT 0x80进入内核态
@@ -625,6 +690,6 @@ void sched_init(void)
 	 * 陷阱门使用两个set_trap_gate和set_system_gate
 	 *
 	 */
-	set_system_gate(0x80, &system_call);
+	set_system_gate(0x80,&system_call);
 }
 

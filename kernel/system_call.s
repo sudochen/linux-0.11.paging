@@ -60,7 +60,7 @@ sa_mask = 4
 sa_flags = 8
 sa_restorer = 12
 
-nr_system_calls = 86
+nr_system_calls = 87
 
 /*
  * Ok, I get parallel printer interrupts while using the floppy for some
@@ -70,6 +70,12 @@ nr_system_calls = 86
 .globl hd_interrupt,floppy_interrupt,parallel_interrupt
 .globl device_not_available, coprocessor_error
 .globl switch_to_by_stack, first_return_from_kernel
+
+.macro SAVE_ALL
+.endm
+
+.macro RESTORE_ALL
+.endm
 
 .align 4
 bad_sys_call:
@@ -82,6 +88,7 @@ reschedule:
 
 .align 4
 system_call:
+	SAVE_ALL
 	cmpl $nr_system_calls-1,%eax    # 判断系统调用号是否合法, eax存放的是系统调用号
 	ja bad_sys_call                 # 如果不合法则跳到bad_sys_call处，并将eax设置为-1,作为返回值
 	push %ds						# 保护ds
@@ -129,6 +136,7 @@ ret_from_sys_call:
 	pop %fs
 	pop %es
 	pop %ds
+	RESTORE_ALL
 	iret
 
 .align 4
@@ -282,6 +290,8 @@ timer_interrupt:
 	pushl %eax                      # eax作为参数入栈
 	call do_timer		            # 'do_timer(long CPL)' does everything from
 	addl $4,%esp		            # task switching to accounting ... 恢复参数
+	#pushl $ret_from_sys_call
+	#ret
 	jmp ret_from_sys_call
 
 .align 4
