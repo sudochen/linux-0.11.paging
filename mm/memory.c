@@ -357,7 +357,7 @@ int copy_page_tables(struct task_struct * tsk)
 	new_page_dir = (unsigned long *) new_pg_dir;
 
 	/* 
-	 * 如果是第一个进程调用了fock，则只需复制160个页，也就是640KB的空间
+	 * 如果是第一个进程调用了fork，则只需复制160个页，也就是640KB的空间
 	 * 第一个进程是手工创建出来的，
 	 * 在head.s模块中我们使用了一个页表目录共1024个页表维护4M的空间
 	 * 但其实640K就够用了
@@ -401,7 +401,6 @@ int copy_page_tables(struct task_struct * tsk)
 		 * i >= 768表示3GB以上的内核，3GB以上的内存表示内核空间
 		 * 所有进程共享内核空间，内核空间的页表都是一个
 		 * 并且可读可写
-		 * 对于进程0执行fork时，虽然USED标记成立，但是其用户空间的页表不能共用
 		 *
 		 */
 		if (mem_map[MAP_NR(old_pg_table)] & USED && i >= 768) {

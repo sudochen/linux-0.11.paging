@@ -197,8 +197,8 @@ static struct super_block * read_super(int dev)
 	 * s_zmap_blocks表示逻辑块位图使用多个个块保存，最多8个
 	 */
 	block = 2;
-	printk("%s s_imap_blocks for inodes bit map is %x\n", __func__, s->s_imap_blocks);
-	printk("%s s_zmap_blocks for data block bit map is %x\n", __func__, s->s_zmap_blocks);
+	printk("%s s_imap_blocks for inodes bit map has %x blocks\n", __func__, s->s_imap_blocks);
+	printk("%s s_zmap_blocks for data block bit map has %x blocks\n", __func__, s->s_zmap_blocks);
 
 	for (i=0 ; i < s->s_imap_blocks ; i++)
 		if ((s->s_imap[i] = bread(dev, block)))
@@ -364,7 +364,7 @@ void mount_root(void)
 	 */
 	mi->i_count += 4 ;	/* NOTE! it is logically used 4 times, not 1 */
 	/*
-	 * i节点安装到超级块中，引用+1
+	 * i节点安装到超级块中，引用+2
 	 */
 	p->s_isup = p->s_imount = mi;
 	/*
@@ -401,6 +401,8 @@ void mount_root(void)
 	 * minix文件系统一共可管理8192*8*1K = 64M
 	 * minix文件系统最大64M
 	 * inode代表一个文件或者文件夹
+	 * 20240717 review
+	 * block没有加一是因为block是从0开始的
 	 *
 	 *
 	 */
@@ -412,6 +414,8 @@ void mount_root(void)
 	/*
 	 * 重置free，计算inode
 	 * p->s_ninodes是从1开始计数的或者说s_ninodes没有包含0节点,
+	 * ROOT_INO定义为1，在这里+1或者不+1其实都无所谓，因为只是统计一下
+	 * 只所以+1是因为inode的i_num从1开始
 	 * 
 	 */
 	free=0;

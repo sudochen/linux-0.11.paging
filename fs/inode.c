@@ -467,6 +467,8 @@ static void read_inode(struct m_inode * inode)
 	 * 这个意思是这个需要读取的inode在第几个块中
 	 *
 	 * inode->i_num-1是因为0号inode是保留的吗
+	 * 20240717 review
+	 * 之所以inode->i_num-1是因为，i_num从1开始计数，但是针对InodeTable从0地址开始
 	 */
 	block = 2 + sb->s_imap_blocks + sb->s_zmap_blocks +
 		(inode->i_num-1)/INODES_PER_BLOCK;

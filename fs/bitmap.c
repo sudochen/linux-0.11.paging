@@ -11,7 +11,7 @@
 #include <linux/kernel.h>
 
 /*
- * 将addr处的数据清零，清256个字节
+ * 将addr处的数据清零，清1024个字节
  */
 #define clear_block(addr) \
 __asm__ __volatile__ ("cld\n\t" \
@@ -75,14 +75,9 @@ void free_block(int dev, int block)
 		panic("trying to free block on nonexistent device");
 	/*
 	 *
-	 * 如果逻辑块小于首个数据逻辑块或者大于设备的总逻辑块，panic
-	 * 这里为什么是block >= sb->s_nzones就会被判定为非法呢
-	 * 原因如下：
-	 *  sb->s_nzones表示设备上以逻辑块为单位的总逻辑块数
-	 *  包括引导块，i节点位图块，逻辑块位图块，i节点块，数据区块
-	 *  因此针对一个设备来说有效的范围为[0, sb->s_nzones]
-	 *  有因为文件系统限制，一个有效的数据块最小为sb->s_firstdatazone
-	 *  因此才有此处的判断
+	 * block的范围为[0, sb->s_nzones>
+	 * 一个block对应一个bit，bit的范围为[1, sb->s_nzones]
+	 * bit0没有对应block，bit1对应block0
 	 *
 	 *
 	 */
@@ -108,9 +103,12 @@ void free_block(int dev, int block)
 	/*
 	 *
 	 * 根据block计算zmap位图的偏移，zmap的bit0保留
-	 * 因此sb->s_firstdatazone对应的位图为bit1
-	 * 我们假设block的值为sb->s_firstdatazone
-	 * block -= sb->s_firstdatazone - 1 表达式的值为1
+	 * 下面的语句不太容易理解
+	 * 我们可以重新写一下
+	 * block -= sb->s_firstdatazone -1;
+	 * block = block - (sb->s_firstdatazone - 1)
+	 * 也就是
+	 * block = block - sb->s_firstdatazone + 1;
 	 * 
 	 */
 	block -= sb->s_firstdatazone - 1 ;
@@ -178,13 +176,11 @@ int new_block(int dev)
 	bh->b_dirt = 1;
 	/*
 	 *
-	 * j += i*8192 + sb->s_firstdatazone - 1 表达式计算block的值
-	 * 我们假设i为0，j为1，则
-	 * 1 += 0*8192 + sb->s_firstdatazone - 1
-	 * 表达式的值为sb->s_firstdatazone，也就是第一个数据区的块
-	 * 由此我们可见逻辑块位图bit1对应的数据区块是第一个块，bit0保留
-	 *
 	 * 计算的j为block的值，这个值小于sb->s_nzones
+	 * 下面的计算是根据位图信息确定响应的block，之所以减一
+	 * 是因为bit1对应block0
+	 * 请认真理解
+	 * block的编号为[0, sb->s_nzones>
 	 *
 	 *
 	 */
@@ -255,7 +251,8 @@ void free_inode(struct m_inode * inode)
 	 * 如果i节点等于0或者大于该文件系统i节点的总数则panic
 	 * s_ninodes表示该设备支持最大的inode数，这个值从1开始
 	 * 因此inode位图的范围为[0, sb->s_ninodes]
-	 * 由于inode的0位保留值，因此inode位图的范围为[1, sb->s_ninodes]
+	 * 由于inode的0位保留值，因此实际inode位图的范围为[1, sb->s_ninodes]
+	 * 对应的block的编号为[0, sb->s_ninodes>
 	 *
 	 */
 	if (inode->i_num < 1 || inode->i_num > sb->s_ninodes)

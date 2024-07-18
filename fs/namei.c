@@ -401,7 +401,7 @@ static struct m_inode * dir_namei(const char * pathname,
 	struct m_inode * dir;
 	/*
 	 * 根据pathname找到最终的目录，例如
-	 * /usr/sbintest
+	 * /usr/src/sbintest
 	 * 最终找到/usr/src这个inode
 	 */
 	if (!(dir = get_dir(pathname))) {

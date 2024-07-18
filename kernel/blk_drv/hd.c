@@ -206,8 +206,8 @@ int sys_setup(void * BIOS)
 		for (i=1;i<5;i++,p++) {
 			hd[i+5*drive].start_sect = p->start_sect;
 			hd[i+5*drive].nr_sects = p->nr_sects;
-			printk("   hd[%d] partion[%d] start_sect %d nr_sects %d\n", 
-				drive, i+5*drive, 
+			printk("   hd[%d] partion[%d] boot_ind 0x%02x start_sect %d nr_sects %d\n", 
+				drive, i+5*drive, p->boot_ind,
 				hd[i+5*drive].start_sect,
 				hd[i+5*drive].nr_sects);
 		}
