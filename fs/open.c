@@ -149,7 +149,7 @@ int sys_open(const char * filename, int flag, int mode)
 	mode &= 0777 & ~current->umask;
 	
 	/*
-	 * 遍历urrent的filp[20]，20表示一个进程最多打开20个文件
+	 * 遍历current的filp[20]，20表示一个进程最多打开20个文件
 	 * 如果不能找到一个空闲的filp，返回错误
 	 */
 	for(fd = 0; fd < NR_OPEN; fd++)
@@ -186,7 +186,7 @@ int sys_open(const char * filename, int flag, int mode)
 	 * 那么inode的是/usr/sbin/test的inode
 	 *
 	 */
-	if ((i = open_namei(filename, flag, mode, &inode)) <0 ) {
+	if ((i = open_namei(filename, flag, mode, &inode)) < 0 ) {
 		current->filp[fd] = NULL;
 		f->f_count = 0;
 		return i;
