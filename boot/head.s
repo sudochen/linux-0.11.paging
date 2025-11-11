@@ -39,7 +39,8 @@ startup_32:
 # } stack_start { &user_stack, 0x10}
 # lss设置了栈顶指针和其栈的段地址，0x10表示数据段，
 # 地址为stack_start定义起大小为PAGE_SIZE>>2 = 1024字节
-# lss执行如下操作 lss mem48
+# lss指令它会从内存中加载一个2字节的段地址和一个4字节的偏移地址，然后将它们分别存储到SS和ESP寄存器中
+# lss执行如下操作 lss mem48，在实模式中lss mem32, 包括两个字节的段地址和两个字节的偏移地址
 # esp = a = &user_stack
 # ss = b = 0x10 表示数据段
 # 可以看到此处我们在数据段设置了esp的值
@@ -183,7 +184,7 @@ after_page_tables:
 #
 1:	movl $0x10,%eax			# reload all the segment registers
 	mov %ax,%ds				# after changing gdt.
-	mov %ax,%es				# relaod的目的在于刷新描述符高速缓存
+	mov %ax,%es				# reload的目的在于刷新描述符高速缓存
 	mov %ax,%fs
 	mov %ax,%gs				# 此时程序运行在0xc0000000地址处
 	lss stack_start,%esp	# 重新设置堆栈
@@ -254,7 +255,7 @@ setup_paging:
 	xorl %edi,%edi			    # swapper_pg_dir is at 0x000
 	cld
 	rep
-	stosl						# stosl *EDI = EAX; 
+	stosl						# stosl *EDI = EAX until ecx is 0; 
 #
 # 上面的代码将0地址开始的20K空间清零，
 # 在这里插入一点知识，X86首先进行段式映射，然后在进行页式映射，

@@ -37,7 +37,7 @@
 # 编译系统编译的镜像存放格式为：
 # | 512 bootsect | 512*4 setup | system(head, kernel} |
 #
-# BOIS会将启动设备的前512字节拷贝至内存的0x7c00处，并跳转到此处运行，
+# BOIS会将启动设备的前512字节拷贝至内存的0x7c00处，并跳转到此处运行 jump 0x0000:0x7c00，
 # bootsect程序主要将自己（512个字节）搬移到0x90000(576K)处，
 # 从启动设备继续读取setup模块，存放在自己后面，也就是0x90200地址处（576.5K）处
 # 此时bootsect和setup的结尾地址为0x90a00
@@ -104,7 +104,7 @@
 #
 
 #
-# 系统启动后，BIOS会将启动设备的前512字节拷贝至0x7c00处并运行
+# 系统启动后，BIOS会将启动设备的前512字节拷贝至0x0000:0x7c00处并运行
 # 在编译bootsect模块中，我们发现了链接参数-Ttext 0 -e _start表示起始地址为0，程序入口为_start
 # 
 # 设置DS为0x07c0，设置ES为0x9000
@@ -161,8 +161,8 @@ go:	mov	%cs, %ax					# CS = 0x9000
 # Note that 'es' is already set up.
 #
 # 下面一段代码使用BOIS系统调用从第二个扇区读，共读取4个扇区，2048个字节，我们
-# 通过前面的注释可是直到setup模块，刚好占用4个扇区，下面代码的左右就是从第二个
-# 扇区开始读取数据，存放在当前数据段的0x200处，也就是0x90200处，读取成功后挑战至
+# 通过前面的注释可以知道是setup模块，刚好占用4个扇区，下面代码的作用就是从第二个
+# 扇区开始读取数据，存放在当前数据段的0x200处，也就是0x90200处，读取成功后挑转至
 # ok_load_setup处开始运行，读取失败后继续进行尝试读取
 # 目前我们只需知道其含义即可，具体可参考<Linux内核完全注释的讲解>
 # sector扇区从1开始编号
@@ -174,7 +174,7 @@ go:	mov	%cs, %ax					# CS = 0x9000
 load_setup:
 	mov	$0x0000, %dx				# drive 0, head 0
 	mov	$0x0002, %cx				# sector 2, track 0
-	mov	$0x0200, %bx				# address = 512, in INITSEG
+	mov	$0x0200, %bx				# address = 512, in INITSEG, here ES(0x9000):BX(0x0200)
 	mov $0x0200+SETUPLEN, %ax		# service 2, nr of sectors, SETUPLEN is 4
 	int	$0x13						# read it
 	jnc	ok_load_setup				# ok - continue

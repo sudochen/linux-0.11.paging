@@ -93,7 +93,7 @@ system_call:
 	ja bad_sys_call                 # 如果不合法则跳到bad_sys_call处，并将eax设置为-1,作为返回值
 	push %ds						# 保护ds
 	push %es						# 保护es
-	push %fs                        # 保存段选择子的内容，SS,ESP,CS,EIP在执行INT指令时都已经压入栈中，IRET时恢复
+	push %fs                        # 保存段选择子的内容，SS,ESP,EFLAGS,CS,EIP在执行INT指令时都已经压入栈中，IRET时恢复
 	pushl %edx						# 保护edx
 	pushl %ecx		                # 保护ecx
 	pushl %ebx		                # 保护ebx

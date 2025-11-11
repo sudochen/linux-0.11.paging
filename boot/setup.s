@@ -168,7 +168,7 @@ do_move:
 #
 end_move:
 	mov	$SETUPSEG, %ax			# right, forgot this at first. didn't work :-)
-	mov	%ax, %ds				# DS = 0x9020 以为idt_48是相对DS的偏移地址，在上面的代码中该表了DS，在这个地方恢复
+	mov	%ax, %ds				# DS = 0x9020 以为idt_48是相对DS的偏移地址，在上面的代码中修改了DS，在这个地方恢复
 	lidt idt_48					# load idt with 0,0
 	lgdt gdt_48					# load gdt with whatever appropriate
 
@@ -248,6 +248,23 @@ end_move:
 # 每个描述符占8个字节
 #
 # 根据后面的全局描述符表gdt可以知道，此处是代码段，基地址为0，也是Image模块的Head的地址
+# 这是一个16位的指令，但是此时已经是32位保护模式了，是否能正确运行？
+# https://forum.osdev.org/viewtopic.php?t=36767
+# 这里面有一个解释是16位保护模式,
+# The hidden content is called the segment descriptor cache. 
+# The CPU always uses the descriptor cache for the segment base and limit, 
+# even in real mode.
+# CPU 始终会使用该描述符高速缓存获取段基址和段界限，即便在实模式下也是如此。
+# 在实模式下，每当加载段寄存器时，寄存器中的值会左移4位（即乘以 16）并存入描述符高速缓存的基址（BASE）字段
+# 这使得执行完修改 CR0 寄存器的 MOV 指令后，处理器能正常访问下一条指令，不会出现地址问题
+# 实模式下，没有任何操作能修改段界限（LIMIT）。CPU 上电或复位时，段界限（LIMIT）的默认值为 0xFFFF
+# 执行下面的执行时，由于cs没有变化，高速缓存的BASE也没有变化
+# 但是指令执行时$8按照保护模式的方式进行解析，从刷新段描述符高速缓存
+# 我在lmp $8, 0前添加
+# mov $0x0002, %ax
+# mov $0x0002, %bx
+# 系统仍能正常运行，说明测试仍然按照实模式下指令运行，
+# 当重载了CS后，高速缓存也会刷新，并刷新了指令流水线，此后按照CR0设置的规则运行
 #
 	ljmp $8, $0					# jmp offset 0 of code segment 0 in gdt
 
