@@ -72,10 +72,13 @@ clean:
 run: qemu
 
 QEMU_OPS_X 	:= -m 64M -boot a
-QEMU_OPS_T	:= -m 64M -boot a -nographic -serial mon:stdio
+QEMU_OPS_T	:= -m 64M -boot a -display none -serial mon:stdio
 QEMU_FLP_A	:= -fda Image
 QEMU_FLP_B	:= -fdb ./rootfs/rootimage-0.11.img
 QEMU_HD0	:= -hda ./rootfs/hdc-0.11.img
+
+test-qemu:
+	@echo "qemu-system-i386 ${QEMU_OPS_T} ${QEMU_FLP_A} ${QEMU_FLP_B} $(QEMU_HD0)"
 qemu:
 	qemu-system-i386 ${QEMU_OPS_T} ${QEMU_FLP_A} ${QEMU_FLP_B} $(QEMU_HD0)
 qemu-x:
